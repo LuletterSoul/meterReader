@@ -26,6 +26,10 @@ def recognizePointerInstrument(image, info):
     plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), index=inc(), title="Src")
     # A. The Template Image Processing
     src = cv2.GaussianBlur(src, (3, 3), sigmaX=0, sigmaY=0, borderType=cv2.BORDER_DEFAULT)
+    plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), index=inc(), title="Blurred")
+    # src = cv2.Laplacian(src, ddepth=cv2.CV_8UC3, ksize=3, scale=5)
+    # plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), index=inc(), title='Laplacian')
+
     # src = cv2.medianBlur(src, ksize=9)
 
     # to make image more contrast and obvious by equalizing histogram
@@ -34,8 +38,6 @@ def recognizePointerInstrument(image, info):
     #     src[:, :, 0] = cv2.equalizeHist(src[:, :, 0])
     #     src = cv2.cvtColor(src, cv2.COLOR_YUV2RGB)
     # plot.subImage(src=src, index=++plot_img_index, title="Src")
-
-    plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), index=inc(), title="Blurred")
     canny = cv2.Canny(src, 75, 75 * 2, edges=None)
     # calculate edge by Sobel operator
     gray = cv2.cvtColor(src=src, code=cv2.COLOR_RGB2GRAY)
@@ -45,7 +47,7 @@ def recognizePointerInstrument(image, info):
     # usa a large structure element to fix high light in case otust image segmentation error.
     structuring_element = cv2.getStructuringElement(shape=cv2.MORPH_ELLIPSE, ksize=(101, 101))
     gray = cv2.morphologyEx(src=gray, op=cv2.MORPH_BLACKHAT, kernel=structuring_element)
-    plot.subImage(src=gray, index=inc(), title='BlackHap', cmap='gray')
+    plot.subImage(src=gray, index=inc(), title='BlackHat', cmap='gray')
     # B. Edge Detection
     grad_x = cv2.Sobel(src=gray, dx=1, dy=0, ddepth=cv2.CV_8UC1, borderType=cv2.BORDER_DEFAULT)
     grad_y = cv2.Sobel(src=gray, dx=0, dy=1, ddepth=cv2.CV_8UC1, borderType=cv2.BORDER_DEFAULT)
@@ -74,19 +76,18 @@ def recognizePointerInstrument(image, info):
     threshold = cv2.erode(threshold, kernel)
     canny = cv2.dilate(canny, kernel)
     canny = cv2.erode(canny, kernel)
+    plot.subImage(cmap='gray', src=canny, title='DilateAndErodeCanny', index=inc())
     # cv2.createTrackbar("Kernel:", window_name, 1, 20, dilate_erode)
     # cv2.imshow(window_name, otsu)
     plot.subImage(cmap='gray', src=threshold, title='DilateAndErodeThresh', index=inc())
-    plot.subImage(cmap='gray', src=canny, title='DilateAndErodeCanny', index=inc())
 
-    img, contours, hierarchy = cv2.findContours(canny, mode=cv2.RETR_LIST, method=cv2.CHAIN_APPROX_NONE)
+    img, contours, hierarchy = cv2.findContours(canny, mode=cv2.RETR_TREE, method=cv2.CHAIN_APPROX_NONE)
     # filter some large contours, the pixel number of scale line should be small enough.
     # and the algorithm will find the pixel belong to the scale line as we need.
+    cv2.drawContours(src, contours, -1, (0, 255, 0), thickness=cv2.FILLED)
+    plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), title='Contours', index=inc())
     contours = [c for c in contours if len(c) < 45]
     ## Draw Contours
-    src = cv2.cvtColor(src, cv2.COLOR_BGR2RGB)
-    cv2.drawContours(src, contours, -1, (0, 255, 0), thickness=1)
-    plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), title='Contours', index=inc())
 
     # C. Figuring out Centroids of the Scale Lines
     centroids = []
@@ -110,7 +111,7 @@ def recognizePointerInstrument(image, info):
     dst_threshold = 40
     period_rasanc_time = 100  # 每趟rasanc 的迭代次数,rasanc内置提前终止的算法
     iter_time = 5  # 启动rasanc拟合算法的固定次数
-    hit_time = 0 # 成功拟合到圆的次数
+    hit_time = 0  # 成功拟合到圆的次数
     # 为了确保拟合所得的圆的确信度，多次拟合求平均值
     for i in range(iter_time):
         best_circle, max_fit_num, best_consensus_pointers = rasan.randomSampleConsensus(centroids,
@@ -188,6 +189,8 @@ def compareEqualizeHistBetweenDiffEnvironment():
 
 
 if __name__ == '__main__':
-    recognizePointerInstrument(cv2.imread("image/SF6/IMG_DOUBLE.JPG"), None)
+    # recognizePointerInstrument(cv2.imread("image/SF6/IMG_7586_1.JPG"), None)
+    # recognizePointerInstrument(cv2.imread('image/SF6/IMG_DOUBLE.JPG'), None)
+    recognizePointerInstrument(cv2.imread('image/SF6/IMG_7680_1.JPG'), None)
 
     # compareEqualizeHistBetweenDiffEnvironment()
