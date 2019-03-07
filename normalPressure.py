@@ -45,7 +45,7 @@ def readPressure(image, info):
     if 'contoursThreshold' not in info:
         return -1
     contours_thresh = info["contoursThreshold"]
-    contours = [c for c in contours if len(c) > contours_thresh]
+    # contours = [c for c in contours if len(c) > contours_thresh]
     # draw contours
     filtered_thresh = np.zeros(thresh.shape, dtype=np.uint8)
     cv2.drawContours(filtered_thresh, contours, -1, (255, 0, 0), thickness=cv2.FILLED)
