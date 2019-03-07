@@ -185,12 +185,12 @@ def readPressureValueFromImg(img, info):
 
 
 if __name__ == '__main__':
-    res1 = readPressureValueFromDir('lxd1_4', 'my_design/image/lxd1.jpg', 'config/lxd1_4.json')
-    res2 = readPressureValueFromDir('szk2_1', 'my_design/image/szk2.jpg', 'config/szk2_1.json')
-    res3 = readPressureValueFromDir('szk1_5', 'my_design/image/szk1.jpg', 'config/szk1_5.json')
-    res4 = readPressureValueFromDir('wn1_5', 'my_design/image/wn1.jpg', 'config/wn1_5.json')
-    res5 = readPressureValueFromDir('xyy3_1', 'my_design/image/xyy3.jpg', 'config/xyy3_1.json')
-    res6 = readPressureValueFromDir('pressure2_1', 'my_design/image/pressure2.jpg', 'config/pressure2_1.json')
+    res1 = readPressureValueFromDir('lxd1_4', 'image/lxd1.jpg', 'config/lxd1_4.json')
+    res2 = readPressureValueFromDir('szk2_1', 'image/szk2.jpg', 'config/szk2_1.json')
+    res3 = readPressureValueFromDir('szk1_5', 'image/szk1.jpg', 'config/szk1_5.json')
+    res4 = readPressureValueFromDir('wn1_5', 'image/wn1.jpg', 'config/wn1_5.json')
+    res5 = readPressureValueFromDir('xyy3_1', 'image/xyy3.jpg', 'config/xyy3_1.json')
+    res6 = readPressureValueFromDir('pressure2_1', 'image/pressure2.jpg', 'config/pressure2_1.json')
     print(res1)
     print(res2)
     print(res3)
