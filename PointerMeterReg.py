@@ -1,5 +1,7 @@
 import json
 from Common import *
+from LocalRegionSearch import *
+import util.PlotUtil as plot
 
 
 def readPressureValueFromImage(image, info):
@@ -16,10 +18,10 @@ def readPressureValueFromImage(image, info):
     canny = cv2.Canny(src, 75, 75 * 2)
     dilate_kernel = cv2.getStructuringElement(ksize=(5, 5), shape=cv2.MORPH_ELLIPSE)
     erode_kernel = cv2.getStructuringElement(ksize=(3, 3), shape=cv2.MORPH_ELLIPSE)
-    # plot.subImage(src=canny, index=inc(), title='DilatedCanny', cmap='gray')
     # fill scale line with white pixels
     canny = cv2.dilate(canny, dilate_kernel)
     canny = cv2.erode(canny, erode_kernel)
+    plot.subImage(src=canny, index=plot.next_idx(), title='DilatedCanny', cmap='gray')
     # find contours
     img, contours, hierarchy = cv2.findContours(canny, mode=cv2.RETR_LIST, method=cv2.CHAIN_APPROX_NONE)
     # filter the large contours, the pixel number of scale line should be small enough.
@@ -28,7 +30,7 @@ def readPressureValueFromImage(image, info):
     contours = [c for c in contours if len(c) < contours_thresh]
     # draw contours
     src = cv2.cvtColor(src, cv2.COLOR_BGR2RGB)
-    cv2.drawContours(src, contours, -1, (0, 255, 0), thickness=cv2.FILLED)
+    # cv2.drawContours(src, contours, -1, (0, 255, 0), thickness=cv2.FILLED)
     # prasan_iteration = rasan.getIteration(0.7, 0.3)
     dst_threshold = 70
     period_rasanc_time = 100  # 每趟rasanc 的迭代次数,rasanc内置提前终止的算法
@@ -49,6 +51,9 @@ def readPressureValueFromImage(image, info):
     center = 0  # 表盘的中心
     radius = 0  # 表盘的半径
     # 使用拟合方式求表盘的圆,进而求出圆心
+    line_detector = cv2.createLineSegmentDetector()
+    _lines, width, prec, nfa = line_detector.detect(canny)
+    line_detector.drawSegments(src, _lines)
     if info['enableFit']:
         # figuring out centroids of the scale lines
         center, radius = figureOutDialCircleByScaleLine(contours, dst_threshold,
@@ -64,7 +69,9 @@ def readPressureValueFromImage(image, info):
         radius_1 = np.sqrt(np.power(start_ptr[0] - center[0], 2) + np.power(start_ptr[1] - center[1], 2))
         radius_2 = np.sqrt(np.power(end_ptr[0] - center[0], 2) + np.power(end_ptr[1] - center[1], 2))
         radius = np.int64((radius_1 + radius_2) / 2)
-
+    print(center)
+    cv2.circle(src, (center[0], center[1]), radius, (255, 0, 0), thickness=3)
+    plot.subImage(src=src, index=plot.next_idx(), title='Fitted Circle')
     # 清楚可被清除的噪声区域，噪声区域(文字、刻度数字、商标等)的area 可能与指针区域的area形似,应该被清除，
     # 防止在识别指针时出现干扰。值得注意，如果当前指针覆盖了该干扰区域，指针的一部分可能也会被清除
     canny = cleanNoisedRegions(canny, info, src.shape)
@@ -165,5 +172,6 @@ def readPressureValueFromImg(img, info):
 
 if __name__ == '__main__':
     readPressureValueFromDir('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
+    plot.show()
     # readPressureValueFromDir('image/SF6/IMG_7666.JPG', 'config/otg_1.json')
     # demarcate_roi('image/SF6/IMG_7666.JPG')
