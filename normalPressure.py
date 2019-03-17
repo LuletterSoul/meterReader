@@ -5,17 +5,6 @@ import util.PlotUtil as plot
 plot_index = 0
 
 
-def inc():
-    global plot_index
-    plot_index += 1
-    return plot_index
-
-
-def reset():
-    global plot_index
-    plot_index = 0
-
-
 def normalPressure(image, info):
     '''
     :param image: ROI image
@@ -33,6 +22,8 @@ def normalPressure(image, info):
 
 def readPressure(image, info):
     src = meterFinderByTemplate(image, info["template"])
+    plot.subImage(src=cv2.cvtColor(image, cv2.COLOR_BGR2RGB), index=plot.next_idx(), title='Original Image')
+    plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), index=plot.next_idx(), title='Matched Result')
     src = cv2.GaussianBlur(src, (3, 3), sigmaX=0, sigmaY=0, borderType=cv2.BORDER_DEFAULT)
     gray = cv2.cvtColor(src=src, code=cv2.COLOR_RGB2GRAY)
     thresh = gray.copy()
@@ -50,7 +41,7 @@ def readPressure(image, info):
     filtered_thresh = np.zeros(thresh.shape, dtype=np.uint8)
     cv2.drawContours(filtered_thresh, contours, -1, (255, 0, 0), thickness=cv2.FILLED)
     thresh = filtered_thresh
-    plot.subImage(src=filtered_thresh, index=inc(), title='Filtered Threshold', cmap='gray')
+    # plot.subImage(src=filtered_thresh, index=plot.next_idx(), title='Filtered Threshold', cmap='gray')
     # load meter calibration form configuration
     if 'ptrResolution' not in info:
         return -1
@@ -78,13 +69,13 @@ def readPressure(image, info):
                                                                patch_degree=0.5,
                                                                ptr_resolution=ptr_resolution, clean_ration=clean_ration)
     line_ptr = cv2PtrTuple2D(line_ptr)
-    plot.subImage(src=cv2.bitwise_or(thresh, pointer_mask), index=inc(), title='pointer', cmap='gray')
+    plot.subImage(src=cv2.bitwise_or(thresh, pointer_mask), index=plot.next_idx(), title='pointer', cmap='gray')
     cv2.line(src, (start_ptr[0], start_ptr[1]), (center[0], center[1]), color=(0, 0, 255), thickness=1)
     cv2.line(src, (end_ptr[0], end_ptr[1]), (center[0], center[1]), color=(0, 0, 255), thickness=1)
     cv2.circle(src, (start_ptr[0], start_ptr[1]), 5, (0, 0, 255), -1)
     cv2.circle(src, (end_ptr[0], end_ptr[1]), 5, (0, 0, 255), -1)
     cv2.circle(src, (center[0], center[1]), 2, (0, 0, 255), -1)
-    plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), index=inc(), title='calibration')
+    plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), index=plot.next_idx(), title='Calibration Info')
     start_value = info['startValue']
     total = info['totalValue']
     value = AngleFactory.calPointerValueByPoint(startPoint=start_ptr, endPoint=end_ptr,
