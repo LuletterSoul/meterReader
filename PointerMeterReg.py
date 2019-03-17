@@ -2,6 +2,7 @@ import json
 from Common import *
 from LocalRegionSearch import *
 import util.PlotUtil as plot
+import LineSegmentFilter as LSF
 
 
 def readPressureValueFromImage(image, info):
@@ -11,10 +12,12 @@ def readPressureValueFromImage(image, info):
         pyramid = info['pyramid']
         src = cv2.resize(src, (0, 0), fx=pyramid, fy=pyramid)
     src = cv2.GaussianBlur(src, (3, 3), sigmaX=0, sigmaY=0, borderType=cv2.BORDER_DEFAULT)
-    gray = cv2.cvtColor(src=src, code=cv2.COLOR_RGB2GRAY)
+    gray = cv2.cvtColor(src=src, code=cv2.COLOR_BGR2GRAY)
     do_hist = info["enableEqualizeHistogram"]
-    if do_hist:
-        gray = cv2.equalizeHist(gray)
+#    if do_hist:
+#        gray = cv2.equalizeHist(gray)
+    thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+    plot.subImage(src=cv2.cvtColor(thresh,cv2.colorg), index=plot.next_idx(), title='Thresh_OTSU', cmap='gray')
     canny = cv2.Canny(src, 75, 75 * 2)
     dilate_kernel = cv2.getStructuringElement(ksize=(5, 5), shape=cv2.MORPH_ELLIPSE)
     erode_kernel = cv2.getStructuringElement(ksize=(3, 3), shape=cv2.MORPH_ELLIPSE)
@@ -50,10 +53,8 @@ def readPressureValueFromImage(image, info):
     end_ptr = cvtPtrDic2D(end_ptr)
     center = 0  # 表盘的中心
     radius = 0  # 表盘的半径
+    # LSF.filter(canny, src)
     # 使用拟合方式求表盘的圆,进而求出圆心
-    line_detector = cv2.createLineSegmentDetector()
-    _lines, width, prec, nfa = line_detector.detect(canny)
-    line_detector.drawSegments(src, _lines)
     if info['enableFit']:
         # figuring out centroids of the scale lines
         center, radius = figureOutDialCircleByScaleLine(contours, dst_threshold,
@@ -69,7 +70,6 @@ def readPressureValueFromImage(image, info):
         radius_1 = np.sqrt(np.power(start_ptr[0] - center[0], 2) + np.power(start_ptr[1] - center[1], 2))
         radius_2 = np.sqrt(np.power(end_ptr[0] - center[0], 2) + np.power(end_ptr[1] - center[1], 2))
         radius = np.int64((radius_1 + radius_2) / 2)
-    print(center)
     cv2.circle(src, (center[0], center[1]), radius, (255, 0, 0), thickness=3)
     plot.subImage(src=src, index=plot.next_idx(), title='Fitted Circle')
     # 清楚可被清除的噪声区域，噪声区域(文字、刻度数字、商标等)的area 可能与指针区域的area形似,应该被清除，
@@ -172,6 +172,6 @@ def readPressureValueFromImg(img, info):
 
 if __name__ == '__main__':
     readPressureValueFromDir('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
-    plot.show()
-    # readPressureValueFromDir('image/SF6/IMG_7666.JPG', 'config/otg_1.json')
-    # demarcate_roi('image/SF6/IMG_7666.JPG')
+plot.show()
+# readPressureValueFromDir('image/SF6/IMG_7666.JPG', 'config/otg_1.json')
+# demarcate_roi('image/SF6/IMG_7666.JPG')
