@@ -6,6 +6,7 @@ import LineSegmentFilter as LSF
 
 
 def readPressureValueFromImage(image, info):
+    t = cv2.getTickCount()
     src = meterFinderByTemplate(image, info["template"])
     pyramid = 0.2
     if 'pyramid' in info and info['pyramid'] is not None:
@@ -14,10 +15,10 @@ def readPressureValueFromImage(image, info):
     src = cv2.GaussianBlur(src, (3, 3), sigmaX=0, sigmaY=0, borderType=cv2.BORDER_DEFAULT)
     gray = cv2.cvtColor(src=src, code=cv2.COLOR_BGR2GRAY)
     do_hist = info["enableEqualizeHistogram"]
-#    if do_hist:
-#        gray = cv2.equalizeHist(gray)
-    thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-    plot.subImage(src=cv2.cvtColor(thresh,cv2.colorg), index=plot.next_idx(), title='Thresh_OTSU', cmap='gray')
+    #    if do_hist:
+    #        gray = cv2.equalizeHist(gray)
+    retval, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
+    plot.subImage(src=thresh, index=plot.next_idx(), title='Thresh_OTSU', cmap='gray')
     canny = cv2.Canny(src, 75, 75 * 2)
     dilate_kernel = cv2.getStructuringElement(ksize=(5, 5), shape=cv2.MORPH_ELLIPSE)
     erode_kernel = cv2.getStructuringElement(ksize=(3, 3), shape=cv2.MORPH_ELLIPSE)
@@ -53,7 +54,7 @@ def readPressureValueFromImage(image, info):
     end_ptr = cvtPtrDic2D(end_ptr)
     center = 0  # 表盘的中心
     radius = 0  # 表盘的半径
-    # LSF.filter(canny, src)
+    LSF.filter(canny, src)
     # 使用拟合方式求表盘的圆,进而求出圆心
     if info['enableFit']:
         # figuring out centroids of the scale lines
@@ -93,6 +94,8 @@ def readPressureValueFromImage(image, info):
                                                 centerPoint=center,
                                                 point=cv2PtrTuple2D(line_ptr), startValue=start_value,
                                                 totalValue=total)
+    t = (cv2.getTickCount() - t) / cv2.getTickFrequency()
+    print("Execution Time:", t)
     return json.dumps({"value": value})
 
 
