@@ -67,11 +67,19 @@ def filterContex(src):
             _, gray = cv2.threshold(timg, int((l + 1) * 255 / N), 255, cv2.THRESH_BINARY_INV)
         gray, contours, hierarcy = cv2.findContours(gray, method=cv2.RETR_LIST,
                                                     mode=cv2.CHAIN_APPROX_NONE)
+        all_approx_size = 0
+        lens = []
         for contour in contours:
             approx = cv2.approxPolyDP(contour, cv2.arcLength(contour, True) * 0.02, True)
-            if len(approx) >= 10:
+            all_approx_size += len(approx)
+            lens.append(len(approx))
+            if len(approx) >= 5:
                 cv2.drawContours(mask, [contour], -1, -1, cv2.FILLED)
+            print("Max", max(lens))
+            print("Min", min(lens))
+            print("Avg", all_approx_size / len(contours))
     src = cv2.bitwise_and(src, src, mask=mask)
+
     return src, mask
 
 
