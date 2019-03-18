@@ -13,6 +13,9 @@ def readPressureValueFromImage(image, info):
         pyramid = info['pyramid']
         src = cv2.resize(src, (0, 0), fx=pyramid, fy=pyramid)
     src = cv2.GaussianBlur(src, (3, 3), sigmaX=0, sigmaY=0, borderType=cv2.BORDER_DEFAULT)
+    img = src.copy()
+    img = LSF.filterContex(img)
+    plot.subImage(src=cv2.cvtColor(img,cv2.COLOR_BGR2RGB), index=plot.next_idx(), title="Filter convex")
     gray = cv2.cvtColor(src=src, code=cv2.COLOR_BGR2GRAY)
     do_hist = info["enableEqualizeHistogram"]
     #    if do_hist:
@@ -54,7 +57,8 @@ def readPressureValueFromImage(image, info):
     end_ptr = cvtPtrDic2D(end_ptr)
     center = 0  # 表盘的中心
     radius = 0  # 表盘的半径
-    LSF.filter(canny, src)
+    # LSF.filter(canny, src)
+
     # 使用拟合方式求表盘的圆,进而求出圆心
     if info['enableFit']:
         # figuring out centroids of the scale lines

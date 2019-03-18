@@ -52,6 +52,29 @@ def findSquares(img):
         return squares
 
 
+def filterContex(img):
+    pyr = cv2.pyrDown(img)
+    timg = cv2.pyrUp(pyr)
+    gray0 = cv2.split(timg)
+    for c in range(0, len(gray0)):
+        for l in range(0, N):
+            if l == 0:
+                gray = cv2.Canny(image=gray0[c], threshold1=0, threshold2=5,
+                                 apertureSize=5)
+                kernel = cv2.getStructuringElement(cv2.MORPH_RECT, ksize=(3, 3))
+                gray = cv2.dilate(gray, kernel)
+            else:
+                _, gray = cv2.threshold(gray0[c], int((l + 1) * 255 / N), 255, cv2.THRESH_BINARY_INV)
+            gray, contours, hierarcy = cv2.findContours(np.array(gray, dtype=np.uint8), method=cv2.RETR_FLOODFILL,
+                                                        mode=cv2.CHAIN_APPROX_NONE)
+            for k in range(0, len(contours)):
+                approx = cv2.approxPolyDP(contours[k], cv2.arcLength(contours[k], True) * 0.02, True)
+                if len(approx) >= 2 and cv2.isContourConvex(approx):
+                    for contour in contours[k][0]:
+                        img.itemset((contour[0], contour[1], c), 0)
+    return img
+
+
 def drawSquares(img, squares):
     for k in range(0, len(squares)):
         cv2.polylines(img, squares[k], True, (0, 255, 0), 3, cv2.LINE_AA)
