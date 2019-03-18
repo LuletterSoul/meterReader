@@ -18,40 +18,37 @@ N = 11
 
 
 def findSquares(img):
+    shape = img.shape
     pyr = cv2.pyrDown(img)
     timg = cv2.pyrUp(pyr)
-    gray0 = np.zeros(img.shape, dtype=np.int32)
-    gray = np.zeros(img.shape, dtype=np.int32)
+    gray0 = np.zeros(img.shape, dtype=np.uint8)
+    gray = np.zeros(img.shape, dtype=np.uint8)
     squares = []
-
-    for c in range(0, 3):
-        ch = [c, 0]
-        print(timg.shape)
-        print(gray0.shape)
-        cv2.mixChannels(timg, dst=gray0, fromTo=ch)
+    gray0 = cv2.split(timg)
+    for c in range(0, len(gray0)):
         for l in range(0, N):
             if l == 0:
-                gray = cv2.Canny(image=gray0, threshold1=0, threshold2=5,
+                gray = cv2.Canny(image=gray0[c], threshold1=0, threshold2=5,
                                  apertureSize=5)
                 kernel = cv2.getStructuringElement(cv2.MORPH_RECT, ksize=(3, 3))
                 gray = cv2.dilate(gray, kernel)
             else:
-                gray = gray0 >= (l + 1) * 255 / N
-        contours = cv2.findContours(gray, method=cv2.RETR_LIST, mode=cv2.CHAIN_APPROX_SIMPLE)
-
-        for k in range(0, len(contours)):
-            approx = cv2.approxPolyDP(contours[k], cv2.arcLength(contours[k], True), True)
-            if len(approx) == 4 and np.abs(cv2.contourArea(approx) > 1000) and cv2.isContourConvex(approx):
-                maxCosine = 0
-
-                for j in range(2, 5):
-                    vectorA = approx[j - 2] - approx[j % 4]
-                    vectorB = approx[j - 1] - approx[j % 4]
-                    cosine = np.cos(AngleFactory.calAngleBetweenTwoVector(vectorA, vectorB))
-                    maxCosine = max(cosine, maxCosine)
+                _, gray = cv2.threshold(gray0[c], int((l + 1) * 255 / N), 255, cv2.THRESH_BINARY_INV)
+            gray, contours, hierarcy = cv2.findContours(np.array(gray, dtype=np.uint8), method=cv2.RETR_FLOODFILL,
+                                                        mode=cv2.CHAIN_APPROX_NONE)
+            for k in range(0, len(contours)):
+                approx = cv2.approxPolyDP(contours[k], cv2.arcLength(contours[k], True) * 0.02, True)
+                if len(approx) == 4 and np.abs(cv2.contourArea(approx) > 1000) and cv2.isContourConvex(approx):
+                    # cv2.drawContours(img, contours, k, (0, 255, 0))
+                    # cv2.polylines(img, approx, True, (255, 0, 0), 3, cv2.FILLED)
+                    maxCosine = 0
+                    for j in range(2, 5):
+                        vectorA = (approx[j % 4] - approx[j - 1])[0]
+                        vectorB = (approx[j - 2] - approx[j - 1])[0]
+                        cosine = np.cos(AngleFactory.calAngleBetweenTwoVector(vectorA, vectorB))
+                        maxCosine = max(cosine, maxCosine)
                     if maxCosine < 0.3:
                         squares.append(approx)
-
         return squares
 
 
@@ -59,6 +56,7 @@ def drawSquares(img, squares):
     for k in range(0, len(squares)):
         cv2.polylines(img, squares[k], True, (0, 255, 0), 3, cv2.LINE_AA)
     cv2.imshow("Squares", img)
+    cv2.waitKey(0)
 
     def filter(binary, draw_src):
         line_detector = cv2.createLineSegmentDetector()
@@ -127,9 +125,9 @@ def drawSquares(img, squares):
 
 
 if __name__ == '__main__':
-    names = ['data/pic1.png', 'data/pic2.png', 'data/pic3.png''data/pic4.png', 'data/pic5.png', 'data/pic6.png']
-
+    names = ['data/pic1.png', 'data/pic2.png', 'data/pic3.png', 'data/pic4.png', 'data/pic5.png', 'data/pic6.png']
     for i in range(0, len(names)):
+        print("Image name is :", names[i])
         img = cv2.imread(names[i])
         if img is None:
             print("Couldn't load ", names[i])
