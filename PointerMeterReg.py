@@ -3,6 +3,7 @@ from Common import *
 from LocalRegionSearch import *
 import util.PlotUtil as plot
 import LineSegmentFilter as LSF
+import imutils
 
 
 def readPressureValueFromImage(image, info):
@@ -13,22 +14,40 @@ def readPressureValueFromImage(image, info):
         pyramid = info['pyramid']
         src = cv2.resize(src, (0, 0), fx=pyramid, fy=pyramid)
     src = cv2.GaussianBlur(src, (3, 3), sigmaX=0, sigmaY=0, borderType=cv2.BORDER_DEFAULT)
-    img = src.copy()
-    img = LSF.filterContex(img)
-    plot.subImage(src=cv2.cvtColor(img,cv2.COLOR_BGR2RGB), index=plot.next_idx(), title="Filter convex")
     gray = cv2.cvtColor(src=src, code=cv2.COLOR_BGR2GRAY)
+    gray_test = gray.copy()
+    gray_test, covex_mask = LSF.filterContex(gray_test)
+    plot.subImage(src=covex_mask, index=plot.next_idx(), title='Mask', cmap='gray')
+    plot.subImage(src=gray_test, index=plot.next_idx(), title='Filter Contours', cmap='gray')
     do_hist = info["enableEqualizeHistogram"]
     #    if do_hist:
     #        gray = cv2.equalizeHist(gray)
     retval, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
-    plot.subImage(src=thresh, index=plot.next_idx(), title='Thresh_OTSU', cmap='gray')
+    # Tresh + Gray Convex Masx
+    thresh_pre = cv2.bitwise_and(thresh,covex_mask)
+    plot.subImage(src=thresh_pre, index=plot.next_idx(), title='lhsh conver', cmap='gray')
+
+    #
+    thresh_convex, tm = LSF.filterContex(thresh)
+    plot.subImage(src=thresh_convex, index=plot.next_idx(), title='Thresh conver', cmap='gray')
+    plot.subImage(src=tm, index=plot.next_idx(), title='Thresh tm', cmap='gray')
+    # plot.subImage(src=thresh, index=plot.next_idx(), title='Thresh_OTSU', cmap='gray')
     canny = cv2.Canny(src, 75, 75 * 2)
+    auto_canny = imutils.auto_canny(gray)
     dilate_kernel = cv2.getStructuringElement(ksize=(5, 5), shape=cv2.MORPH_ELLIPSE)
     erode_kernel = cv2.getStructuringElement(ksize=(3, 3), shape=cv2.MORPH_ELLIPSE)
     # fill scale line with white pixels
     canny = cv2.dilate(canny, dilate_kernel)
     canny = cv2.erode(canny, erode_kernel)
-    plot.subImage(src=canny, index=plot.next_idx(), title='DilatedCanny', cmap='gray')
+    auto_canny = cv2.dilate(auto_canny, dilate_kernel)
+    auto_canny = cv2.erode(canny, erode_kernel)
+    plot.subImage(src=auto_canny, index=plot.next_idx(), title='Auto Canny', cmap='gray')
+    auto_canny, am = LSF.filterContex(auto_canny)
+    plot.subImage(src=am, index=plot.next_idx(), title='Filter Am', cmap='gray')
+    plot.subImage(src=auto_canny, index=plot.next_idx(), title='Fitered', cmap='gray')
+    # plot.subImage(src=canny, index=plot.next_idx(), title='DilatedCanny', cmap='gray')
+    # auto_canny = LSF.filterContex(auto_canny)
+    # plot.subImage(src=auto_canny, index=plot.next_idx(), title='Auto Canny Contours', cmap='gray')
     # find contours
     img, contours, hierarchy = cv2.findContours(canny, mode=cv2.RETR_LIST, method=cv2.CHAIN_APPROX_NONE)
     # filter the large contours, the pixel number of scale line should be small enough.

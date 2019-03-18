@@ -1,4 +1,5 @@
 from Common import *
+import imutils
 
 thresh1 = 20
 thresh2 = 25
@@ -34,7 +35,7 @@ def findSquares(img):
                 gray = cv2.dilate(gray, kernel)
             else:
                 _, gray = cv2.threshold(gray0[c], int((l + 1) * 255 / N), 255, cv2.THRESH_BINARY_INV)
-            gray, contours, hierarcy = cv2.findContours(np.array(gray, dtype=np.uint8), method=cv2.RETR_FLOODFILL,
+            gray, contours, hierarcy = cv2.findContours(np.array(gray, dtype=np.uint8), method=cv2.RETR_LIST,
                                                         mode=cv2.CHAIN_APPROX_NONE)
             for k in range(0, len(contours)):
                 approx = cv2.approxPolyDP(contours[k], cv2.arcLength(contours[k], True) * 0.02, True)
@@ -52,27 +53,36 @@ def findSquares(img):
         return squares
 
 
-def filterContex(img):
-    pyr = cv2.pyrDown(img)
+def filterContex(src):
+    pyr = cv2.pyrDown(src)
     timg = cv2.pyrUp(pyr)
-    gray0 = cv2.split(timg)
-    for c in range(0, len(gray0)):
-        for l in range(0, N):
-            if l == 0:
-                gray = cv2.Canny(image=gray0[c], threshold1=0, threshold2=5,
-                                 apertureSize=5)
-                kernel = cv2.getStructuringElement(cv2.MORPH_RECT, ksize=(3, 3))
-                gray = cv2.dilate(gray, kernel)
-            else:
-                _, gray = cv2.threshold(gray0[c], int((l + 1) * 255 / N), 255, cv2.THRESH_BINARY_INV)
-            gray, contours, hierarcy = cv2.findContours(np.array(gray, dtype=np.uint8), method=cv2.RETR_FLOODFILL,
-                                                        mode=cv2.CHAIN_APPROX_NONE)
-            for k in range(0, len(contours)):
-                approx = cv2.approxPolyDP(contours[k], cv2.arcLength(contours[k], True) * 0.02, True)
-                if len(approx) >= 2 and cv2.isContourConvex(approx):
-                    for contour in contours[k][0]:
-                        img.itemset((contour[0], contour[1], c), 0)
-    return img
+    mask = np.ones(src.shape[:2], dtype=np.uint8) * 255
+    for l in range(0, N):
+        if l == 0:
+            gray = cv2.Canny(image=timg, threshold1=0, threshold2=5,
+                             apertureSize=5)
+            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, ksize=(3, 3))
+            gray = cv2.dilate(gray, kernel)
+        else:
+            _, gray = cv2.threshold(timg, int((l + 1) * 255 / N), 255, cv2.THRESH_BINARY_INV)
+        gray, contours, hierarcy = cv2.findContours(gray, method=cv2.RETR_LIST,
+                                                    mode=cv2.CHAIN_APPROX_NONE)
+        for contour in contours:
+            approx = cv2.approxPolyDP(contour, cv2.arcLength(contour, True) * 0.02, True)
+            if len(approx) >= 10:
+                cv2.drawContours(mask, [contour], -1, -1, cv2.FILLED)
+    src = cv2.bitwise_and(src, src, mask=mask)
+    return src, mask
+
+
+def cleanPoly(src, poly):
+    mask = np.ones(src.shape, dtype=np.uint8) * 255
+    for p in poly:
+        cv2.drawContours(mask, [p], -1, (0, 0, 0), 0)
+        cv2.imshow("Mask", mask)
+        cv2.waitKey(0)
+    src = cv2.bitwise_and(src, mask)
+    return src
 
 
 def drawSquares(img, squares):
@@ -155,4 +165,7 @@ if __name__ == '__main__':
         if img is None:
             print("Couldn't load ", names[i])
         squares = findSquares(img)
-        drawSquares(img, squares)
+        img = cleanPoly(img, squares)
+        # drawSquares(img, squares)
+        cv2.imshow("Img ", img)
+        cv2.waitKey(0)
