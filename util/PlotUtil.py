@@ -21,6 +21,17 @@ def reset():
     plot_index = 0
 
 
+def next_idx():
+    global plot_index
+    plot_index += 1
+    return plot_index
+
+
+def reset():
+    global plot_index
+    plot_index = 0
+
+
 def id(index):
     return PLOT_ROW * 100 + PLOT_COL * 10 + index
 

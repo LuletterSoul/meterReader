@@ -119,6 +119,21 @@ class AngleFactory:
         lenA = np.sqrt(vectorA.dot(vectorA))
         lenB = np.sqrt(vectorB.dot(vectorB))
         cosAngle = vectorA.dot(vectorB) / (lenA * lenB)
+        # notes that dot product calculates min angle between vectorA and vectorB only.
+        angle = np.arccos(cosAngle)
+        return angle
+
+    @classmethod
+    def calAngleBetweenTwoVector(cls, vectorA, vectorB):
+        """
+        get angle formed by two vector
+        :param vectorA: vector A
+        :param vectorB: vector B
+        :return: angle
+        """
+        lenA = np.sqrt(vectorA.dot(vectorA))
+        lenB = np.sqrt(vectorB.dot(vectorB))
+        cosAngle = vectorA.dot(vectorB) / (lenA * lenB)
         angle = np.arccos(cosAngle)
         return angle
 
@@ -136,6 +151,25 @@ class AngleFactory:
         angle = cls.__calAngleBetweenTwoVector(vectorA, vectorB)
 
         # if counter-clockwise
+        # if cross product(two-dim vector's cross product returns a integer only)
+        # is negative ,means the normal vector is oriented down,vectorA is in the clockwise of vectorB
+        # otherwise in counterclockwise.
+        if np.cross(vectorA, vectorB) < 0:
+            angle = 2 * np.pi - angle
+
+        return angle
+
+    @classmethod
+    def calAngleClockwiseByVector(cls, vectorA, vectorB):
+        """
+        get clockwise angle formed by two vector
+        """
+        angle = cls.__calAngleBetweenTwoVector(vectorA, vectorB)
+
+        # if counter-clockwise
+        # if cross product(two-dim vector's cross product returns a integer only)
+        # is negative ,means the normal vector is oriented down,vectorA is in the clockwise of vectorB
+        # otherwise in counterclockwise.
         if np.cross(vectorA, vectorB) < 0:
             angle = 2 * np.pi - angle
 

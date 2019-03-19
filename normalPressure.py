@@ -36,7 +36,7 @@ def readPressure(image, info):
     if 'contoursThreshold' not in info:
         return -1
     contours_thresh = info["contoursThreshold"]
-    contours = [c for c in contours if len(c) > contours_thresh]
+    # contours = [c for c in contours if len(c) > contours_thresh]
     # draw contours
     filtered_thresh = np.zeros(thresh.shape, dtype=np.uint8)
     cv2.drawContours(filtered_thresh, contours, -1, (255, 0, 0), thickness=cv2.FILLED)
@@ -139,7 +139,7 @@ if __name__ == '__main__':
     res3 = readPressureValueFromDir('szk1_5', 'image/szk1.jpg', 'config/szk1_5.json')
     res4 = readPressureValueFromDir('wn1_5', 'image/wn1.jpg', 'config/wn1_5.json')
     res5 = readPressureValueFromDir('xyy3_1', 'image/xyy3.jpg', 'config/xyy3_1.json')
-    res6 = readPressureValueFromDir('pressure2_1', 'image/pressure2.jpg', 'config/pressure2_1.json')
+    res6 = readPressureValueFromDir('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
     plot.show()
     print(res1)
     print(res2)
