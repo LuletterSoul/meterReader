@@ -14,6 +14,9 @@ def readPressureValueFromImage(image, info):
         pyramid = info['pyramid']
         src = cv2.resize(src, (0, 0), fx=pyramid, fy=pyramid)
     src = cv2.GaussianBlur(src, (3, 3), sigmaX=0, sigmaY=0, borderType=cv2.BORDER_DEFAULT)
+    plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), index=plot.next_idx(), title='GaussianBlur')
+    src = cv2.fastNlMeansDenoisingColored(src, h=7, templateWindowSize=7, searchWindowSize=21)
+    plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), index=plot.next_idx(), title='Fast denosing')
     gray = cv2.cvtColor(src=src, code=cv2.COLOR_BGR2GRAY)
     gray_test = gray.copy()
     gray_test, covex_mask = LSF.filterContex(gray_test)
@@ -24,7 +27,7 @@ def readPressureValueFromImage(image, info):
     #        gray = cv2.equalizeHist(gray)
     retval, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
     # Tresh + Gray Convex Masx
-    thresh_pre = cv2.bitwise_and(thresh,covex_mask)
+    thresh_pre = cv2.bitwise_and(thresh, covex_mask)
     plot.subImage(src=thresh_pre, index=plot.next_idx(), title='lhsh conver', cmap='gray')
 
     #
@@ -41,10 +44,10 @@ def readPressureValueFromImage(image, info):
     canny = cv2.erode(canny, erode_kernel)
     auto_canny = cv2.dilate(auto_canny, dilate_kernel)
     auto_canny = cv2.erode(canny, erode_kernel)
-    plot.subImage(src=auto_canny, index=plot.next_idx(), title='Auto Canny', cmap='gray')
-    auto_canny, am = LSF.filterContex(auto_canny)
-    plot.subImage(src=am, index=plot.next_idx(), title='Filter Am', cmap='gray')
     plot.subImage(src=auto_canny, index=plot.next_idx(), title='Fitered', cmap='gray')
+    # Auto Canny + Mask
+    auto_canny = cv2.bitwise_and(auto_canny, covex_mask)
+    plot.subImage(src=auto_canny, index=plot.next_idx(), title='Auto Canny + Cask', cmap='gray')
     # plot.subImage(src=canny, index=plot.next_idx(), title='DilatedCanny', cmap='gray')
     # auto_canny = LSF.filterContex(auto_canny)
     # plot.subImage(src=auto_canny, index=plot.next_idx(), title='Auto Canny Contours', cmap='gray')
@@ -197,7 +200,8 @@ def readPressureValueFromImg(img, info):
 
 
 if __name__ == '__main__':
-    readPressureValueFromDir('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
+    # readPressureValueFromDir('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
+    readPressureValueFromDir('wn1_5', 'image/wn1.jpg', 'config/wn1_5.json')
 plot.show()
 # readPressureValueFromDir('image/SF6/IMG_7666.JPG', 'config/otg_1.json')
 # demarcate_roi('image/SF6/IMG_7666.JPG')

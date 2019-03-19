@@ -73,14 +73,23 @@ def filterContex(src):
             approx = cv2.approxPolyDP(contour, cv2.arcLength(contour, True) * 0.02, True)
             all_approx_size += len(approx)
             lens.append(len(approx))
-            if len(approx) >= 5:
+            if len(approx) >= 10:
                 cv2.drawContours(mask, [contour], -1, -1, cv2.FILLED)
-            print("Max", max(lens))
-            print("Min", min(lens))
-            print("Avg", all_approx_size / len(contours))
+            # print("Max", max(lens))
+            # print("Min", min(lens))
+            # print("Avg", all_approx_size / len(contours))
     src = cv2.bitwise_and(src, src, mask=mask)
-
     return src, mask
+
+
+def cleanExternalContours(src, timg):
+    _, external_contours, _ = cv2.findContours(timg, method=cv2.RETR_EXTERNAL, mode=cv2.CHAIN_APPROX_NONE)
+    clean_external_mask = np.ones(src.shape[:2], dtype=np.uint8) * 255
+    cv2.drawContours(clean_external_mask, external_contours, -1, -1, 1)
+    cv2.imshow("Mask", clean_external_mask)
+    cv2.waitKey(0)
+    # timg = cv2.bitwise_and(timg, timg, mask=clean_external_mask)
+    return timg
 
 
 def cleanPoly(src, poly):
