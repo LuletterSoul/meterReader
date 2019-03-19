@@ -56,6 +56,7 @@ def findSquares(img):
 def filterContex(src):
     pyr = cv2.pyrDown(src)
     timg = cv2.pyrUp(pyr)
+    timg = cleanExternalContours(timg)
     mask = np.ones(src.shape[:2], dtype=np.uint8) * 255
     for l in range(0, N):
         if l == 0:
@@ -65,13 +66,12 @@ def filterContex(src):
             gray = cv2.dilate(gray, kernel)
         else:
             _, gray = cv2.threshold(timg, int((l + 1) * 255 / N), 255, cv2.THRESH_BINARY_INV)
-        gray, contours, hierarcy = cv2.findContours(gray, method=cv2.RETR_LIST,
+        gray, contours, hierarcy = cv2.findContours(gray, method=cv2.RETR_TREE,
                                                     mode=cv2.CHAIN_APPROX_NONE)
-        all_approx_size = 0
         lens = []
-        for contour in contours:
+        for i, contour in enumerate(contours):
             approx = cv2.approxPolyDP(contour, cv2.arcLength(contour, True) * 0.02, True)
-            all_approx_size += len(approx)
+            cv2.boundingRect(approx)
             lens.append(len(approx))
             if len(approx) >= 10:
                 cv2.drawContours(mask, [contour], -1, -1, cv2.FILLED)
@@ -82,14 +82,36 @@ def filterContex(src):
     return src, mask
 
 
-def cleanExternalContours(src, timg):
-    _, external_contours, _ = cv2.findContours(timg, method=cv2.RETR_EXTERNAL, mode=cv2.CHAIN_APPROX_NONE)
+def cleanExternalContours(src, output=None):
+    _, external_contours, _ = cv2.findContours(src, method=cv2.RETR_LIST, mode=cv2.CHAIN_APPROX_NONE)
     clean_external_mask = np.ones(src.shape[:2], dtype=np.uint8) * 255
-    cv2.drawContours(clean_external_mask, external_contours, -1, -1, 1)
-    cv2.imshow("Mask", clean_external_mask)
-    cv2.waitKey(0)
-    # timg = cv2.bitwise_and(timg, timg, mask=clean_external_mask)
-    return timg
+    max_area = cv2.contourArea(max(external_contours, key=cv2.contourArea))
+    min_area = cv2.contourArea(min(external_contours, key=cv2.contourArea))
+    high = (max_area - min_area) * 0.6
+    contours = [c for c in external_contours if cv2.contourArea(c) - min_area >= high]
+    sorted(external_contours, key=cv2.contourArea, reverse=True)
+    for c in contours:
+        cv2.drawContours(clean_external_mask, [c], -1, -1, 3)
+    # cv2.imshow("Mask", clean_external_mask)
+    # cv2.waitKey(0)
+    output = cv2.bitwise_and(src, src, mask=clean_external_mask)
+    return output
+
+
+def clean(src, new_src=None):
+    pyr = cv2.pyrDown(src)
+    timg = cv2.pyrUp(pyr)
+    new_src = np.zeros(src.shape[:2], dtype=np.uint8)
+    gray, contours, hierarcy = cv2.findContours(timg, method=cv2.RETR_LIST,
+                                                mode=cv2.CHAIN_APPROX_NONE)
+    max_area = cv2.contourArea(max(contours, key=cv2.contourArea))
+    min_area = cv2.contourArea(min(contours, key=cv2.contourArea))
+    high = (max_area - min_area) * 0.7
+    for i, contour in enumerate(contours):
+        approx = cv2.approxPolyDP(contour, cv2.arcLength(contour, True) * 0.02, True)
+        if len(approx) <= 8 and cv2.contourArea(contour) < 500:
+            cv2.drawContours(new_src, [contour], -1, 255, cv2.FILLED)
+    return new_src
 
 
 def cleanPoly(src, poly):
