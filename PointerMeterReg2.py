@@ -1,6 +1,8 @@
 from Common import *
 import json
 import util.PlotUtil as plot
+from util import RasancFitCircle as rasan
+
 import imutils
 import LineSegmentFilter as LSF
 
@@ -173,12 +175,26 @@ def extractScaleLine(image, info):
     _lines, width, prec, nfa = detector.detect(auto_canny)
     line_src = np.zeros(src.shape, dtype=np.uint8)
     line_pro = line_src.copy()
-    detector.drawSegments(line_src,_lines)
+    detector.drawSegments(line_src, _lines)
     # detector.drawSegments(line_src, _lines)
-    LSF.filter(_lines, line_pro)
+    lines, approx_center = LSF.filter(_lines, line_pro.shape)
+    detector.drawSegments(line_pro, lines)
     # plot.subImage(src=auto_canny, index=plot.next_idx(), title='Thining', cmap='gray')
     plot.subImage(src=line_src, index=plot.next_idx(), title='Line Detector')
-    plot.subImage(src=line_pro, index=plot.next_idx(), title='Line Detector Processed')
+    line_centers = [np.array([(l[0][0] + l[0][2]) / 2, (l[0][1] + l[0][3]) / 2]) for l in lines]
+    optimal_consensus_num = np.round(len(line_centers) * 0.9)
+    for c in line_centers:
+        cv2.circle(line_pro, (np.int32(c[0]), np.int32(c[1])), 4, (0, 255, 0), cv2.FILLED)
+    best_circle, max_fit_num, best_consensus_pointers = rasan.randomSampleConsensus(data=line_centers,
+                                                                                    max_iterations=200,
+                                                                                    optimal_consensus_num=optimal_consensus_num,
+                                                                                    dst_threshold=min(line_pro.shape[0],
+                                                                                                      line_pro.shape[
+                                                                                                          1]) * 0.1)
+    best_circle = np.int32(best_circle)
+    cv2.circle(line_pro, (best_circle[0], best_circle[1]), 10, color=(0, 255, 0), thickness=cv2.FILLED)
+    cv2.circle(line_pro, (best_circle[0], best_circle[1]), best_circle[2], color=(0, 0, 255), thickness=2)
+    plot.subImage(src=imutils.opencv2matplotlib(line_pro), index=plot.next_idx(), title='Line Detector Processed')
 
     # Auto Canny + Mask
 
@@ -193,5 +209,5 @@ if __name__ == '__main__':
     # res7 = readPressureValueFromDir('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
     initExtractScaleLine('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
     # initExtractScaleLine('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
-    plot.show()
+    plot.show(save=True)
     # print(res7)
