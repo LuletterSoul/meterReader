@@ -99,7 +99,7 @@ def cleanExternalContours(src, output=None):
     return output
 
 
-def clean(src, area_thresh=500, approx_thresh=8, new_src=None):
+def cleanNotInterestedFeature(src, area_thresh=500, approx_thresh=8, new_src=None):
     pyr = cv2.pyrDown(src)
     timg = cv2.pyrUp(pyr)
     new_src = np.zeros(src.shape[:2], dtype=np.uint8)

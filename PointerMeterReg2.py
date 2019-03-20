@@ -138,10 +138,10 @@ def initExtractScaleLine(meter_id, img_dir, config):
     info = json.load(file)
     assert info is not None
     info["template"] = cv2.imread("template/" + meter_id + ".jpg")
-    extractScaleLine(img, info)
+    extractScaleLines(img, info)
 
 
-def extractScaleLine(image, info):
+def extractScaleLines(image, info, lines=None):
     src = meterFinderByTemplate(image, info["template"])
     # src = cv2.GaussianBlur(src, (3, 3), sigmaX=0, sigmaY=0)
     # src = cv2.fastNlMeansDenoisingColored(src, h=7, templateWindowSize=7, searchWindowSize=21)
@@ -158,45 +158,53 @@ def extractScaleLine(image, info):
     # plot.subImage(src=thresh_convex, index=plot.next_idx(), title='Thresh conver', cmap='gray')
     # plot.subImage(src=tm, index=plot.next_idx(), title='Thresh tm', cmap='gray')
     # plot.subImage(src=thresh, index=plot.next_idx(), title='Thresh_OTSU', cmap='gray')
-    canny = cv2.Canny(src, 75, 75 * 2)
     auto_canny = imutils.auto_canny(gray)
     dilate_kernel = cv2.getStructuringElement(ksize=(3, 3), shape=cv2.MORPH_ELLIPSE)
     erode_kernel = cv2.getStructuringElement(ksize=(3, 3), shape=cv2.MORPH_ELLIPSE)
     # fill scale line with white pixels
-    canny = cv2.dilate(canny, dilate_kernel)
-    canny = cv2.erode(canny, erode_kernel)
     auto_canny = cv2.dilate(auto_canny, dilate_kernel)
     auto_canny = cv2.erode(auto_canny, erode_kernel)
     plot.subImage(src=auto_canny, index=plot.next_idx(), title='Auto Canny', cmap='gray')
-    auto_canny = LSF.clean(auto_canny)
+    auto_canny = LSF.cleanNotInterestedFeature(auto_canny)
     plot.subImage(src=auto_canny, index=plot.next_idx(), title='Auto Canny + Cask', cmap='gray')
     auto_canny = cv2.ximgproc.thinning(auto_canny, thinningType=cv2.ximgproc.THINNING_ZHANGSUEN)
+    # extract scale lines
     detector = cv2.createLineSegmentDetector()
     _lines, width, prec, nfa = detector.detect(auto_canny)
-    line_src = np.zeros(src.shape, dtype=np.uint8)
-    line_pro = line_src.copy()
-    detector.drawSegments(line_src, _lines)
+    debug_src = np.zeros(src.shape, dtype=np.uint8)
+    detector.drawSegments(debug_src, _lines)
     # detector.drawSegments(line_src, _lines)
-    lines, approx_center = LSF.filter(_lines, line_pro.shape)
-    detector.drawSegments(line_pro, lines)
-    # plot.subImage(src=auto_canny, index=plot.next_idx(), title='Thining', cmap='gray')
-    plot.subImage(src=line_src, index=plot.next_idx(), title='Line Detector')
-    line_centers = [np.array([(l[0][0] + l[0][2]) / 2, (l[0][1] + l[0][3]) / 2]) for l in lines]
-    optimal_consensus_num = np.round(len(line_centers) * 0.9)
-    for c in line_centers:
-        cv2.circle(line_pro, (np.int32(c[0]), np.int32(c[1])), 4, (0, 255, 0), cv2.FILLED)
-    best_circle, max_fit_num, best_consensus_pointers = rasan.randomSampleConsensus(data=line_centers,
-                                                                                    max_iterations=200,
-                                                                                    optimal_consensus_num=optimal_consensus_num,
-                                                                                    dst_threshold=min(line_pro.shape[0],
-                                                                                                      line_pro.shape[
-                                                                                                          1]) * 0.1)
-    best_circle = np.int32(best_circle)
-    cv2.circle(line_pro, (best_circle[0], best_circle[1]), 10, color=(0, 255, 0), thickness=cv2.FILLED)
-    cv2.circle(line_pro, (best_circle[0], best_circle[1]), best_circle[2], color=(0, 0, 255), thickness=2)
-    plot.subImage(src=imutils.opencv2matplotlib(line_pro), index=plot.next_idx(), title='Line Detector Processed')
+    lines, approx_center = LSF.filter(_lines, debug_src.shape)
+    plot.subImage(src=debug_src, index=plot.next_idx(), title='Noising Line Scale')
+    return lines
 
     # Auto Canny + Mask
+
+
+def fitCenter(lines, shape):
+    detector = cv2.createLineSegmentDetector()
+    # debug image
+    debug_src = np.zeros(shape, dtype=np.uint8)
+    detector.drawSegments(debug_src, lines)
+    # compose a proper format for RASANC algorithm
+    line_centers = [np.array([(l[0][0] + l[0][2]) / 2, (l[0][1] + l[0][3]) / 2]) for l in lines]
+    optimal = np.round(len(line_centers) * 0.9)  # expected optimal result
+    for c in line_centers:
+        cv2.circle(debug_src, (np.int32(c[0]), np.int32(c[1])), 4, (0, 255, 0), cv2.FILLED)
+    # use random sample consensus to fit a best circle model
+    best_circle, max_fit_num, best_consensus_pointers = rasan.randomSampleConsensus(data=line_centers,
+                                                                                    max_iterations=200,
+                                                                                    optimal_consensus_num=optimal,
+                                                                                    dst_threshold=min(shape[0],
+                                                                                                      shape[1]) * 0.01)
+    best_circle = np.int32(best_circle)
+    for c in line_centers:
+        c = np.int32(c)
+        cv2.line(debug_src, (best_circle[0], best_circle[1]), (c[0], c[1]), color=(255, 0, 0), thickness=1)
+    cv2.circle(debug_src, (best_circle[0], best_circle[1]), 5, color=(0, 255, 0), thickness=cv2.FILLED)
+    cv2.circle(debug_src, (best_circle[0], best_circle[1]), best_circle[2], color=(0, 0, 255), thickness=1)
+    plot.subImage(src=imutils.opencv2matplotlib(debug_src), index=plot.next_idx(), title='Fitting Circle Model')
+    return best_circle
 
 
 if __name__ == '__main__':

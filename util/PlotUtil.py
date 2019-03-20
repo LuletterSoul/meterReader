@@ -2,6 +2,7 @@ from matplotlib import pyplot as plt
 import cv2
 import time
 import os
+from DebugSwitcher import is_debugging
 
 PLOT_ROW = 20
 PLOT_COL = 2
@@ -19,6 +20,7 @@ def next_idx():
 def reset():
     global plot_index
     plot_index = 0
+    plt.close()
 
 
 def next_idx():
@@ -37,6 +39,8 @@ def id(index):
 
 
 def subImage(src, index=0, figsize=None, plot_row=None, plot_col=None, title=None, cmap=None):
+    if not is_debugging:
+        return -1
     global PLOT_ROW, PLOT_COL
     if index == 0:
         raise Exception("Index should be specified")
@@ -82,8 +86,11 @@ def save():
 
 
 def show(save=False):
+    if not is_debugging:
+        return -1
     if save:
         str_time = time.strftime('%m-%d-%H:%M:%S', time.localtime(time.time()))
         plt.savefig('./output/' + str_time + '.png')
     reset()
     plt.show()
+    plt.clf()
