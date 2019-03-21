@@ -132,29 +132,60 @@ def readPressureValueFromImg(img, info):
     return normalPressure(img, info)
 
 
-def initExtractScaleLine(meter_id, img_dir, config):
+def init(meter_id, img_dir, config):
     img = cv2.imread(img_dir)
     file = open(config)
     info = json.load(file)
     assert info is not None
     info["template"] = cv2.imread("template/" + meter_id + ".jpg")
-    extractScaleLines(img, info)
+    readPointerMeter(img, info)
 
 
-def extractScaleLines(image, info, lines=None):
+def readPointerMeter(img, info):
+    model, auto_canny = extractMeterModel(img, info)
+    debug_src = auto_canny.copy()
+    debug_src = cv2.cvtColor(debug_src, cv2.COLOR_GRAY2BGR)
+    cv2.circle(debug_src, (model[0], model[1]), model[2], color=(255, 0, 0), thickness=1)
+    plot.subImage(src=debug_src, index=plot.next_idx(), title="Model")
+
+
+def extractMeterModel(image, info, lines=None):
     src = meterFinderByTemplate(image, info["template"])
+    auto_canny = autoCanny(src)
+    lines = extractScaleLines(auto_canny)
+    return fitCenter(lines, info['template'].shape), auto_canny
     # src = cv2.GaussianBlur(src, (3, 3), sigmaX=0, sigmaY=0)
     # src = cv2.fastNlMeansDenoisingColored(src, h=7, templateWindowSize=7, searchWindowSize=21)
+
+    # Auto Canny + Mask
+
+
+def extractScaleLines(src):
+    auto_canny = LSF.cleanNotInterestedFeature(src)
+    plot.subImage(src=auto_canny, index=plot.next_idx(), title='Auto Canny + Cask', cmap='gray')
+    auto_canny = cv2.ximgproc.thinning(auto_canny, thinningType=cv2.ximgproc.THINNING_ZHANGSUEN)
+    # extract scale lines
+    detector = cv2.createLineSegmentDetector()
+    _lines, width, prec, nfa = detector.detect(auto_canny)
+    debug_src = np.zeros([src.shape[0], src.shape[1], 3], dtype=np.uint8)
+    detector.drawSegments(debug_src, _lines)
+    # detector.drawSegments(line_src, _lines)
+    lines, approx_center = LSF.filter(_lines, debug_src.shape)
+    plot.subImage(src=imutils.opencv2matplotlib(debug_src), index=plot.next_idx(), title='Noising Line Scale')
+    return lines
+
+
+def autoCanny(src):
     gray = cv2.cvtColor(src=src, code=cv2.COLOR_BGR2GRAY)
     gray = cv2.fastNlMeansDenoising(gray)
     gray_test = gray.copy()
     # plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), index=plot.next_idx(), title='Fast denosing')
-    retval, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
+    # retval, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
     # gray_test, covex_mask = LSF.filterContex(gray_test)
     # Tresh + Gray Convex Masx
     # thresh_pre = cv2.bitwise_and(thresh, covex_mask)
     # plot.subImage(src=thresh_pre, index=plot.next_idx(), title='lhsh conver', cmap='gray')
-    thresh_convex, tm = LSF.filterContex(thresh)
+    # thresh_convex, tm = LSF.filterContex(thresh)
     # plot.subImage(src=thresh_convex, index=plot.next_idx(), title='Thresh conver', cmap='gray')
     # plot.subImage(src=tm, index=plot.next_idx(), title='Thresh tm', cmap='gray')
     # plot.subImage(src=thresh, index=plot.next_idx(), title='Thresh_OTSU', cmap='gray')
@@ -165,20 +196,7 @@ def extractScaleLines(image, info, lines=None):
     auto_canny = cv2.dilate(auto_canny, dilate_kernel)
     auto_canny = cv2.erode(auto_canny, erode_kernel)
     plot.subImage(src=auto_canny, index=plot.next_idx(), title='Auto Canny', cmap='gray')
-    auto_canny = LSF.cleanNotInterestedFeature(auto_canny)
-    plot.subImage(src=auto_canny, index=plot.next_idx(), title='Auto Canny + Cask', cmap='gray')
-    auto_canny = cv2.ximgproc.thinning(auto_canny, thinningType=cv2.ximgproc.THINNING_ZHANGSUEN)
-    # extract scale lines
-    detector = cv2.createLineSegmentDetector()
-    _lines, width, prec, nfa = detector.detect(auto_canny)
-    debug_src = np.zeros(src.shape, dtype=np.uint8)
-    detector.drawSegments(debug_src, _lines)
-    # detector.drawSegments(line_src, _lines)
-    lines, approx_center = LSF.filter(_lines, debug_src.shape)
-    plot.subImage(src=debug_src, index=plot.next_idx(), title='Noising Line Scale')
-    return lines
-
-    # Auto Canny + Mask
+    return auto_canny
 
 
 def fitCenter(lines, shape):
@@ -215,7 +233,7 @@ if __name__ == '__main__':
     # res5 = readPressureValueFromDir('xyy3_1', 'image/xyy3.jpg', 'config/xyy3_1.json')
     # res6 = readPressureValueFromDir('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
     # res7 = readPressureValueFromDir('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
-    initExtractScaleLine('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
+    init('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
     # initExtractScaleLine('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
     plot.show(save=True)
     # print(res7)
