@@ -93,4 +93,4 @@ def show(save=False):
         plt.savefig('./output/' + str_time + '.png')
     reset()
     plt.show()
-    plt.clf()
+    plt.close()

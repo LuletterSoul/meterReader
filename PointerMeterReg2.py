@@ -86,6 +86,61 @@ def readPressure(image, info):
     return value
 
 
+def read(image, info):
+    src = meterFinderByTemplate(image, info["template"])
+    # plot.subImage(src=cv2.cvtColor(image, cv2.COLOR_BGR2RGB), index=plot.next_idx(), title='Original Image')
+    src = cv2.GaussianBlur(src, (3, 3), sigmaX=0, sigmaY=0, borderType=cv2.BORDER_DEFAULT)
+    gray = cv2.cvtColor(src=src, code=cv2.COLOR_RGB2GRAY)
+    thresh = gray.copy()
+    cv2.threshold(gray, 120, 255, cv2.THRESH_BINARY_INV, thresh)
+    # image thinning
+    thresh = cv2.ximgproc.thinning(thresh, thinningType=cv2.ximgproc.THINNING_ZHANGSUEN)
+    # find contours
+    img, contours, hierarchy = cv2.findContours(thresh, mode=cv2.RETR_LIST, method=cv2.CHAIN_APPROX_NONE)
+    # filter small contours.
+    # contours = [c for c in contours if len(c) > contours_thresh]
+
+    # draw contours
+    filtered_thresh = np.zeros(thresh.shape, dtype=np.uint8)
+    cv2.drawContours(filtered_thresh, contours, -1, (255, 0, 0), thickness=cv2.FILLED)
+    thresh = filtered_thresh
+    # plot.subImage(src=filtered_thresh, index=plot.next_idx(), title='Filtered Threshold', cmap='gray')
+    # load meter calibration form configuration
+    model, start_ptr, end_ptr = getMeterModel(src, info)
+    center = np.array([model[0], model[1]])
+    radius = model[2]
+    hlt = np.array([center[0] - radius, center[1]])  # 通过圆心的水平线与圆的左交点
+    # 计算起点向量、终点向量与过圆心的左水平线的夹角
+    start_radians = AngleFactory.calAngleClockwise(start_ptr, hlt, center)
+    # 以过圆心的左水平线为扫描起点
+    if start_radians < np.pi:
+        # 在水平线以下,标记为负角
+        start_radians = -start_radians
+    end_radians = AngleFactory.calAngleClockwise(hlt, end_ptr, center)
+    ptr_resolution = 5
+    clean_ration = 0
+    # 从特定范围搜索指针
+    pointer_mask, theta, line_ptr = findPointerFromBinarySpace(thresh, center, radius, start_radians,
+                                                               end_radians,
+                                                               patch_degree=0.5,
+                                                               ptr_resolution=ptr_resolution, clean_ration=clean_ration)
+    line_ptr = cv2PtrTuple2D(line_ptr)
+    plot.subImage(src=cv2.bitwise_or(thresh, pointer_mask), index=plot.next_idx(), title='pointer', cmap='gray')
+    cv2.line(src, (start_ptr[0], start_ptr[1]), (center[0], center[1]), color=(0, 0, 255), thickness=1)
+    cv2.line(src, (end_ptr[0], end_ptr[1]), (center[0], center[1]), color=(0, 0, 255), thickness=1)
+    cv2.circle(src, (start_ptr[0], start_ptr[1]), 5, (0, 0, 255), -1)
+    cv2.circle(src, (end_ptr[0], end_ptr[1]), 5, (0, 0, 255), -1)
+    cv2.circle(src, (center[0], center[1]), 2, (0, 0, 255), -1)
+    # plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), index=plot.next_idx(), title='Calibration Info')
+    start_value = info['startValue']
+    total = info['totalValue']
+    value = AngleFactory.calPointerValueByPoint(startPoint=start_ptr, endPoint=end_ptr,
+                                                centerPoint=center,
+                                                point=line_ptr, startValue=start_value,
+                                                totalValue=total)
+    return value
+
+
 def calAvgRadius(center, end_ptr, start_ptr):
     radius_1 = np.sqrt(np.power(start_ptr[0] - center[0], 2) + np.power(start_ptr[1] - center[1], 2))
     radius_2 = np.sqrt(np.power(end_ptr[0] - center[0], 2) + np.power(end_ptr[1] - center[1], 2))
@@ -125,7 +180,8 @@ def readPressureValueFromDir(meter_id, img_dir, config):
     info = json.load(file)
     assert info is not None
     info["template"] = cv2.imread("template/" + meter_id + ".jpg")
-    return readPressureValueFromImg(img, info)
+    # return readPressureValueFromImg(img, info)
+    return read(img, info)
 
 
 def readPressureValueFromImg(img, info):
@@ -140,10 +196,10 @@ def init(meter_id, img_dir, config):
     info = json.load(file)
     assert info is not None
     info["template"] = cv2.imread("template/" + meter_id + ".jpg")
-    readPointerMeter(img, info)
+    getMeterModel(img, info)
 
 
-def readPointerMeter(img, info):
+def getMeterModel(img, info):
     model, auto_canny = extractMeterModel(img, info)
     shape = img.shape
     t = min(shape[0], shape[1]) * 0.02
@@ -154,6 +210,7 @@ def readPointerMeter(img, info):
     rebuild_lines, start_pt, end_pt = rebuildScaleLines(auto_canny, model, t)
     best_model = fitCenter(rebuild_lines, auto_canny.shape)
     print("Lose :", np.abs(best_model - model))
+    return best_model, start_pt, end_pt
 
 
 def rebuildScaleLines(auto_canny, model, threshold, start_pt=None, end_pt=None):
@@ -172,7 +229,7 @@ def rebuildScaleLines(auto_canny, model, threshold, start_pt=None, end_pt=None):
         cv2.circle(debug_src, (end_pt[0], end_pt[1]), 5,
                    (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)), 2)
     else:
-        print("Start and end point not found.")
+        raise Exception("Start and end point not found.")
     plot.subImage(src=debug_src, index=plot.next_idx(), title="Rebuild Scale Lines")
     return lines, start_pt, end_pt
 
@@ -238,8 +295,8 @@ def getLineVector(start, end, model_center, line_vector=None):
     return np.array(line_vector)
 
 
-def extractMeterModel(image, info, lines=None):
-    src = meterFinderByTemplate(image, info["template"])
+def extractMeterModel(src, info, lines=None):
+    # src = meterFinderByTemplate(image, info["template"])
     auto_canny = autoCanny(src)
     lines = extractScaleLines(auto_canny)
     return fitCenter(lines, info['template'].shape), auto_canny
@@ -321,8 +378,10 @@ if __name__ == '__main__':
     # res4 = readPressureValueFromDir('wn1_5', 'image/wn1.jpg', 'config/wn1_5.json')
     # res5 = readPressureValueFromDir('xyy3_1', 'image/xyy3.jpg', 'config/xyy3_1.json')
     # res6 = readPressureValueFromDir('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
-    # res7 = readPressureValueFromDir('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
-    init('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
+    # init('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
     # initExtractScaleLine('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
+    res = readPressureValueFromDir('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
+    # res2 = readPressureValueFromDir('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
     plot.show(save=True)
-    # print(res7)
+    print(res)
+    # print(res2)

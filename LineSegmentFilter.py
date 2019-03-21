@@ -157,7 +157,7 @@ def filter(_lines, shape, _filtered_lines=None):
         for j in range(0, line_set_len):
             if i == j or vis[j] == 1:
                 continue
-            t = cv2.getTickCount()
+            # t = cv2.getTickCount()
             dis_center = EuclideanDistance(line_descriptors[i][3], line_descriptors[j][3])
             hor_angle1 = AngleFactory.calAngleClockwiseByVector(level_line_vector, line_descriptors[i][2])
             hor_angle2 = AngleFactory.calAngleClockwiseByVector(level_line_vector, line_descriptors[j][2])
@@ -167,7 +167,7 @@ def filter(_lines, shape, _filtered_lines=None):
                 hor_angle2 = hor_angle2 - np.pi
             diff_angle = np.rad2deg(np.abs(hor_angle2 - hor_angle1))
             diff_len = np.abs(line_descriptors[i][4] - line_descriptors[j][4])
-            n = (cv2.getTickCount() - t) / cv2.getTickFrequency()
+            # n = (cv2.getTickCount() - t) / cv2.getTickFrequency()
             if dis_center < thresh1 or diff_angle < thresh3:
                 line1 = [line_descriptors[i][0], line_descriptors[i][1]]
                 line2 = [line_descriptors[j][0], line_descriptors[j][1]]
@@ -190,6 +190,8 @@ def filterMatchedLine(pairs, matched_lines, shape, filtered_lines=None):
     right_lines = [l[1] for l in pairs]
     left_cross_pts = getCrossPointerSet(left_lines, shape)
     right_cross_pts = getCrossPointerSet(right_lines, shape)
+    if not left_cross_pts or not right_cross_pts:
+        raise Exception("Cross pointer set couldn't be empty.")
     avg_center = (np.mean(left_cross_pts, axis=0) + np.mean(right_cross_pts, axis=0)) / 2
     filtered_lines = [l for l in matched_lines if
                       getDistPtToLine(avg_center, [l[0][0], l[0][1]], [l[0][2], l[0][3]]) < min(shape[0],
