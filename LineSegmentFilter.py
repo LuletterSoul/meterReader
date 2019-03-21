@@ -1,6 +1,6 @@
 from Common import *
 import imutils
-from LineInstersectionExtractor import getCrossPoint, getDistPtToLine
+from LineUtils import getCrossPoint, getDistPtToLine
 
 thresh1 = 20
 thresh2 = 25

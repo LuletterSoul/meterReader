@@ -2,9 +2,11 @@ from Common import *
 import json
 import util.PlotUtil as plot
 from util import RasancFitCircle as rasan
+import random
 
 import imutils
 import LineSegmentFilter as LSF
+import LineUtils as LU
 
 plot_index = 0
 
@@ -143,10 +145,97 @@ def init(meter_id, img_dir, config):
 
 def readPointerMeter(img, info):
     model, auto_canny = extractMeterModel(img, info)
+    shape = img.shape
+    t = min(shape[0], shape[1]) * 0.02
     debug_src = auto_canny.copy()
     debug_src = cv2.cvtColor(debug_src, cv2.COLOR_GRAY2BGR)
     cv2.circle(debug_src, (model[0], model[1]), model[2], color=(255, 0, 0), thickness=1)
     plot.subImage(src=debug_src, index=plot.next_idx(), title="Model")
+    rebuild_lines, start_pt, end_pt = rebuildScaleLines(auto_canny, model, t)
+    best_model = fitCenter(rebuild_lines, auto_canny.shape)
+    print("Lose :", np.abs(best_model - model))
+
+
+def rebuildScaleLines(auto_canny, model, threshold, start_pt=None, end_pt=None):
+    debug_src = np.zeros([auto_canny.shape[0], auto_canny.shape[1], 3], dtype=np.uint8)
+    detector = cv2.createLineSegmentDetector()
+    lines, width, prec, nfa = detector.detect(auto_canny)
+    model_center = [model[0], model[1]]
+    descriptors, left_lines_set, right_lines_set, line_avg_len = extractScaleLineFromSrc(lines, model, model_center,
+                                                                                         threshold)
+    start_pt, end_pt = calStartEndRange(left_lines_set, right_lines_set, line_avg_len)
+    lines = np.array([line[0] for line in descriptors])
+    detector.drawSegments(debug_src, lines)
+    if start_pt[0] != -1 and end_pt[0] != -1:
+        cv2.circle(debug_src, (start_pt[0], start_pt[1]), 5,
+                   (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)), 2)
+        cv2.circle(debug_src, (end_pt[0], end_pt[1]), 5,
+                   (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)), 2)
+    else:
+        print("Start and end point not found.")
+    plot.subImage(src=debug_src, index=plot.next_idx(), title="Rebuild Scale Lines")
+    return lines, start_pt, end_pt
+
+
+def extractScaleLineFromSrc(lines, model, model_center, threshold):
+    descriptors = []
+    line_avg_len = 0
+    vertical_vector = np.array([0, 1])
+    left_lines_set = []
+    right_lines_set = []
+    for index, line in enumerate(lines):
+        l = line[0]
+        line_center = (np.array([l[0], l[1]]) + np.array([l[2], l[3]])) / 2
+        # scale line intersect with circle
+        start = np.array([l[0], l[1]])
+        end = np.array([l[2], l[3]])
+        insec_with_model = LU.getDistPtToLine(model_center, start, end) < threshold
+        center_in_model = np.abs(EuclideanDistance(model_center, line_center) - model[2]) < threshold
+        if insec_with_model and center_in_model:
+            line_vector = getLineVector(start, end, model_center)
+            angle = AngleFactory.calAngleClockwiseByVector(vertical_vector, line_vector)
+            line_len = EuclideanDistance(start, end)
+            line_avg_len += line_len
+            descriptor = [line, line_len, line_center, start, end, line_vector]
+            if angle <= np.pi:
+                descriptor.append(angle)
+                left_lines_set.append(descriptor)
+            else:
+                descriptor.append(np.pi * 2 - angle)
+                right_lines_set.append(descriptor)
+            descriptors.append(descriptor)
+    line_avg_len /= len(descriptors)
+    return descriptors, left_lines_set, right_lines_set, line_avg_len
+
+
+def calStartEndRange(left_lines_set, right_lines_set, len_thresh, start_pt=None, end_pt=None):
+    left_lines_set = sorted(left_lines_set, key=lambda el: el[6])
+    right_lines_set = sorted(right_lines_set, key=lambda el: el[6])
+    start_pt = np.array([-1, -1])
+    end_pt = np.array([-1, -1])
+    for el_left in left_lines_set:
+        is_found = False
+        for el_right in right_lines_set:
+            angle_in_range = np.rad2deg(np.abs(el_left[6] - el_right[6])) < 2
+            len_in_range = el_right[1] > len_thresh * 0.9 and el_left[1] > len_thresh * 0.9
+            if angle_in_range and len_in_range:
+                start_pt = el_left[2]
+                end_pt = el_right[2]
+                is_found = True
+                break
+        if is_found:
+            break
+    return start_pt, end_pt
+
+
+def getLineVector(start, end, model_center, line_vector=None):
+    pt1_ds = EuclideanDistance(start, model_center)
+    pt2_ds = EuclideanDistance(end, model_center)
+    if pt1_ds > pt2_ds:
+        line_vector = start - end
+    else:
+        line_vector = end - start
+    return np.array(line_vector)
 
 
 def extractMeterModel(image, info, lines=None):
@@ -202,7 +291,7 @@ def autoCanny(src):
 def fitCenter(lines, shape):
     detector = cv2.createLineSegmentDetector()
     # debug image
-    debug_src = np.zeros(shape, dtype=np.uint8)
+    debug_src = np.zeros([shape[0], shape[1], 3], dtype=np.uint8)
     detector.drawSegments(debug_src, lines)
     # compose a proper format for RASANC algorithm
     line_centers = [np.array([(l[0][0] + l[0][2]) / 2, (l[0][1] + l[0][3]) / 2]) for l in lines]
