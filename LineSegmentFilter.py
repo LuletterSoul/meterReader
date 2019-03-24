@@ -1,4 +1,5 @@
 from Common import *
+from collections import defaultdict
 import imutils
 import skimage.measure as skm
 from LineUtils import getCrossPoint, getDistPtToLine
@@ -117,44 +118,48 @@ def cleanNotInterestedFeature(src, area_thresh=500, approx_thresh=8, new_src=Non
     return new_src
 
 
-def cleanNotInterestedFeatureByProps(src, area_thresh=500, approx_thresh=8, new_src=None):
-    debug_src = np.zeros((src.shape[0], src.shape[1], 3), dtype=np.uint8)
-    sub = 3
-    # src = src[sub:src.shape[1] - sub][sub:src.shape[0] - sub]
-    retval, labels, stats, centroids = cv2.connectedComponentsWithStats(src)
-    cv2.connectedComponentsWithAlgorithm()
-    coords = [pt for pt in labels if pt]
-    print(len(centroids))
-    # pyr = cv2.pyrDown(src)
-    # timg = cv2.pyrUp(pyr)
-    # regions = skm.regionprops(src)
-    print(len(regions))
-    pts = [region.coords for region in regions if inThresholdRange(region, area_thresh, 10)]
+def cleanNotInterestedFeatureByProps(src, area_thresh=500, approx_thresh=8, rect_ration_thresh=30, new_src=None):
+    # debug_src = np.zeros((src.shape[0], src.shape[1], 3), dtype=np.uint8)
+    # sub = 3
+    # # src = src[sub:src.shape[1] - sub][sub:src.shape[0] - sub]
+    # retval, labels, stats, centroids = cv2.connectedComponentsWithStats(src)
+    # print(labels)
+    # coords = defaultdict(list)
+    # for i in range(src.shape[1]):
+    #     for j in range(src.shape[0]):
+    #         coords[labels[0][i, j]].append(np.array(i, j))
+    # print(centroids)
+
+    # coords = [pt for pt in labels if pt]
+    # print(len(centroids))
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    # # regions = skm.regionprops(src)
+    # print(len(regions))
+    # pts = [region.coords for region in regions if inThresholdRange(region, area_thresh, 10)]
     new_src = np.zeros(src.shape[:2], dtype=np.uint8)
-    cv2.drawContours(new_src, pts, -1, 255, cv2.FILLED)
-    # gray, contours, hierarcy = cv2.findContours(timg, method=cv2.RETR_LIST,
-    #                                             mode=cv2.CHAIN_APPROX_NONE)
-    # max_area = cv2.contourArea(max(contours, key=cv2.contourArea))
-    # min_area = cv2.contourArea(min(contours, key=cv2.contourArea))
-    # high = (max_area - min_area) * 0.7
-    # for i, contour in enumerate(contours):
-    #     approx = cv2.approxPolyDP(contour, cv2.arcLength(contour, True) * 0.02, True)
-    #     if len(approx) <= approx_thresh and cv2.contourArea(contour) < area_thresh:
-    #         cv2.drawContours(new_src, [contour], -1, 255, cv2.FILLED)
+    # contour_src = np.zeros(src.shape[:2], dtype=np.uint8)
+    src = cv2.morphologyEx(src, cv2.MORPH_CLOSE, kernel)
+    gray, contours, hierarcy = cv2.findContours(src, method=cv2.RETR_LIST,
+                                                mode=cv2.CHAIN_APPROX_NONE)
+    for i, contour in enumerate(contours):
+        if inThresholdRange(contour, src.shape, approx_thresh, area_thresh, rect_ration_thresh):
+            cv2.drawContours(new_src, [contour], -1, 255, cv2.FILLED)
     return new_src
 
 
-def inThresholdRange(region, area_thresh, rect_ration_thresh):
-    area_in_range = region.area < area_thresh
-    ratio = 0
-    rect = cv2.minAreaRect(region.coords)
+def inThresholdRange(pts, shape, approx_thresh, area_thresh, rect_ration_thresh):
+    approx = cv2.approxPolyDP(pts, cv2.arcLength(pts, True) * 0.02, True)
+    rect = cv2.minAreaRect(pts)
     rect_width = np.int(rect[1][0])
     rect_height = np.int(rect[1][1])
     if rect_width == 0 or rect_height == 0:
         return False
     ratio = min(rect_width, rect_height) / max(rect_width, rect_height) * 100
     ration_in_range = ratio < rect_ration_thresh
-    return area_thresh and ration_in_range
+    area_in_range = cv2.contourArea(pts) < area_thresh
+    approx_in_range = len(approx) < approx_thresh
+    len_in_range = cv2.arcLength(pts, False) < max(shape[0], shape[1]) * 0.5
+    return ration_in_range and area_in_range and len_in_range
 
 
 def cleanPoly(src, poly):

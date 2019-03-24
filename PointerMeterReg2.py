@@ -90,7 +90,8 @@ def readPressure(image, info):
 def read(image, info):
     src = meterFinderBySIFT(image, info["template"])
     # plot.subImage(src=cv2.cvtColor(image, cv2.COLOR_BGR2RGB), index=plot.next_idx(), title='Original Image')
-    src = cv2.GaussianBlur(src, (3, 3), sigmaX=0, sigmaY=0, borderType=cv2.BORDER_DEFAULT)
+    if info['enableGaussianBlur']:
+        src = cv2.GaussianBlur(src, (3, 3), sigmaX=0, sigmaY=0, borderType=cv2.BORDER_DEFAULT)
     gray = cv2.cvtColor(src=src, code=cv2.COLOR_RGB2GRAY)
     thresh = gray.copy()
     cv2.threshold(gray, 120, 255, cv2.THRESH_BINARY_INV, thresh)
@@ -222,21 +223,25 @@ def getMeterModel(img, info):
 def analysisConnectedComponentsProps(meter_id, img_dir, config):
     img, info = load(config, img_dir, meter_id)
     roi = meterFinderBySIFT(img, info['template'])
+    roi = cv2.GaussianBlur(roi, (3, 3), sigmaX=0, sigmaY=0, borderType=cv2.BORDER_DEFAULT)
     # roi = cv2.fastNlMeansDenoisingColored(roi)
     gray = cv2.cvtColor(roi, cv2.COLOR_RGB2GRAY)
     # gray = cv2.fastNlMeansDenoising(gray)
     # gray = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 3, 10)
-    retval, gray = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
-    print(gray)
+    # retval, gray = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
     # thresh = (gray > threshold_otsu(gray)) * 1
-    analysis(gray)
+    analysis(autoCanny(roi), info)
 
 
-def analysis(src):
+def analysis(src, info):
     debug_src = np.zeros((src.shape[0], src.shape[1], 3), dtype=np.uint8)
     plot.subImage(src=src, index=plot.next_idx(), title='Threshold', cmap='gray')
-    auto_canny = LSF.cleanNotInterestedFeatureByProps(src)
+    auto_canny = LSF.cleanNotInterestedFeatureByProps(src, area_thresh=info['areaThresh'],
+                                                      approx_thresh=info['approxThresh'],
+                                                      rect_ration_thresh=info['rectRationThresh'])
     plot.subImage(src=auto_canny, index=plot.next_idx(), title='Filtered Roughly', cmap='gray')
+    auto_canny = cv2.ximgproc.thinning(auto_canny, thinningType=cv2.ximgproc.THINNING_ZHANGSUEN)
+    plot.subImage(src=auto_canny, index=plot.next_idx(), title='Thinning', cmap='gray')
     # auto_canny = cv2.ximgproc.thinning(auto_canny, thinningType=cv2.ximgproc.THINNING_ZHANGSUEN)
     # extract scale lines
     # detector = cv2.createLineSegmentDetector()
@@ -297,6 +302,9 @@ def extractScaleLineFromSrc(lines, model, model_center, threshold):
                 descriptor.append(np.pi * 2 - angle)
                 right_lines_set.append(descriptor)
             descriptors.append(descriptor)
+    len_des = len(descriptors)
+    if len_des == 0:
+        raise Exception("Not found line descriptors.")
     line_avg_len /= len(descriptors)
     return descriptors, left_lines_set, right_lines_set, line_avg_len
 
@@ -334,7 +342,7 @@ def getLineVector(start, end, model_center, line_vector=None):
 def extractMeterModel(src, info, lines=None):
     # src = meterFinderByTemplate(image, info["template"])
     auto_canny = autoCanny(src)
-    lines = extractScaleLines(auto_canny)
+    lines = extractScaleLines(auto_canny, info)
     return fitCenter(lines, info['template'].shape), auto_canny
     # src = cv2.GaussianBlur(src, (3, 3), sigmaX=0, sigmaY=0)
     # src = cv2.fastNlMeansDenoisingColored(src, h=7, templateWindowSize=7, searchWindowSize=21)
@@ -342,10 +350,14 @@ def extractMeterModel(src, info, lines=None):
     # Auto Canny + Mask
 
 
-def extractScaleLines(src):
-    auto_canny = LSF.cleanNotInterestedFeature(src)
-    plot.subImage(src=auto_canny, index=plot.next_idx(), title='Auto Canny + Cask', cmap='gray')
+def extractScaleLines(src, info):
+    auto_canny = LSF.cleanNotInterestedFeatureByProps(src, area_thresh=info['areaThresh'],
+                                                      approx_thresh=info['approxThresh'],
+                                                      rect_ration_thresh=info['rectRationThresh'])
+    # auto_canny = LSF.cleanNotInterestedFeature(src)
+    plot.subImage(src=auto_canny, index=plot.next_idx(), title='Binary Src After cleaning', cmap='gray')
     auto_canny = cv2.ximgproc.thinning(auto_canny, thinningType=cv2.ximgproc.THINNING_ZHANGSUEN)
+    plot.subImage(src=auto_canny, index=plot.next_idx(), title='Thinning', cmap='gray')
     # extract scale lines
     detector = cv2.createLineSegmentDetector()
     _lines, width, prec, nfa = detector.detect(auto_canny)
@@ -415,10 +427,13 @@ if __name__ == '__main__':
     # res5 = readPressureValueFromDir('xyy3_1', 'image/xyy3.jpg', 'config/xyy3_1.json')
     # res6 = readPressureValueFromDir('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
     # init('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
-    analysisConnectedComponentsProps('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
-    # initExtractScaleLine('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
-    # res = readPressureValueFromDir('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
-    # res2 = readPressureValueFromDir('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
-    plot.show(save=True)
+    # analysisConnectedComponentsProps('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
+    try:
+        # analysisConnectedComponentsProps('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
+        # initExtractScaleLine('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
+        # res = readPressureValueFromDir('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
+        res2 = readPressureValueFromDir('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
+    finally:
+        plot.show(save=True)
     # print(res)
     # print(res2)

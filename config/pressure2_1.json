@@ -37,5 +37,9 @@
       62
     ]
   ],
-  "contoursThreshold":100
+  "contoursThreshold": 100,
+  "areaThresh": 500,
+  "approxThresh": 8,
+  "rectRationThresh": 30,
+  "enableGaussianBlur": true
 }
