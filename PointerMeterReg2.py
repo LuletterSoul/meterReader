@@ -2,6 +2,7 @@ from Common import *
 import json
 import util.PlotUtil as plot
 from util import RasancFitCircle as rasan
+from skimage.filters import threshold_otsu
 import random
 
 import imutils
@@ -87,7 +88,7 @@ def readPressure(image, info):
 
 
 def read(image, info):
-    src = meterFinderByTemplate(image, info["template"])
+    src = meterFinderBySIFT(image, info["template"])
     # plot.subImage(src=cv2.cvtColor(image, cv2.COLOR_BGR2RGB), index=plot.next_idx(), title='Original Image')
     src = cv2.GaussianBlur(src, (3, 3), sigmaX=0, sigmaY=0, borderType=cv2.BORDER_DEFAULT)
     gray = cv2.cvtColor(src=src, code=cv2.COLOR_RGB2GRAY)
@@ -191,12 +192,17 @@ def readPressureValueFromImg(img, info):
 
 
 def init(meter_id, img_dir, config):
+    img, info = load(config, img_dir, meter_id)
+    getMeterModel(img, info)
+
+
+def load(config, img_dir, meter_id):
     img = cv2.imread(img_dir)
     file = open(config)
     info = json.load(file)
     assert info is not None
     info["template"] = cv2.imread("template/" + meter_id + ".jpg")
-    getMeterModel(img, info)
+    return img, info
 
 
 def getMeterModel(img, info):
@@ -211,6 +217,36 @@ def getMeterModel(img, info):
     best_model = fitCenter(rebuild_lines, auto_canny.shape)
     print("Lose :", np.abs(best_model - model))
     return best_model, start_pt, end_pt
+
+
+def analysisConnectedComponentsProps(meter_id, img_dir, config):
+    img, info = load(config, img_dir, meter_id)
+    roi = meterFinderBySIFT(img, info['template'])
+    # roi = cv2.fastNlMeansDenoisingColored(roi)
+    gray = cv2.cvtColor(roi, cv2.COLOR_RGB2GRAY)
+    # gray = cv2.fastNlMeansDenoising(gray)
+    # gray = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 3, 10)
+    retval, gray = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
+    print(gray)
+    # thresh = (gray > threshold_otsu(gray)) * 1
+    analysis(gray)
+
+
+def analysis(src):
+    debug_src = np.zeros((src.shape[0], src.shape[1], 3), dtype=np.uint8)
+    plot.subImage(src=src, index=plot.next_idx(), title='Threshold', cmap='gray')
+    auto_canny = LSF.cleanNotInterestedFeatureByProps(src)
+    plot.subImage(src=auto_canny, index=plot.next_idx(), title='Filtered Roughly', cmap='gray')
+    # auto_canny = cv2.ximgproc.thinning(auto_canny, thinningType=cv2.ximgproc.THINNING_ZHANGSUEN)
+    # extract scale lines
+    # detector = cv2.createLineSegmentDetector()
+    # _lines, width, prec, nfa = detector.detect(auto_canny)
+    # debug_src = np.zeros([src.shape[0], src.shape[1], 3], dtype=np.uint8)
+    # detector.drawSegments(debug_src, _lines)
+    # # detector.drawSegments(line_src, _lines)
+    # lines, approx_center = LSF.filter(_lines, debug_src.shape)
+    # plot.subImage(src=imutils.opencv2matplotlib(debug_src), index=plot.next_idx(), title='Noising Line Scale')
+    return
 
 
 def rebuildScaleLines(auto_canny, model, threshold, start_pt=None, end_pt=None):
@@ -379,9 +415,10 @@ if __name__ == '__main__':
     # res5 = readPressureValueFromDir('xyy3_1', 'image/xyy3.jpg', 'config/xyy3_1.json')
     # res6 = readPressureValueFromDir('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
     # init('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
+    analysisConnectedComponentsProps('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
     # initExtractScaleLine('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
-    res = readPressureValueFromDir('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
+    # res = readPressureValueFromDir('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
     # res2 = readPressureValueFromDir('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
     plot.show(save=True)
-    print(res)
+    # print(res)
     # print(res2)

@@ -1,6 +1,8 @@
 from Common import *
 import imutils
+import skimage.measure as skm
 from LineUtils import getCrossPoint, getDistPtToLine
+import util.PlotUtil as plot
 
 thresh1 = 20
 thresh2 = 25
@@ -115,6 +117,46 @@ def cleanNotInterestedFeature(src, area_thresh=500, approx_thresh=8, new_src=Non
     return new_src
 
 
+def cleanNotInterestedFeatureByProps(src, area_thresh=500, approx_thresh=8, new_src=None):
+    debug_src = np.zeros((src.shape[0], src.shape[1], 3), dtype=np.uint8)
+    sub = 3
+    # src = src[sub:src.shape[1] - sub][sub:src.shape[0] - sub]
+    retval, labels, stats, centroids = cv2.connectedComponentsWithStats(src)
+    cv2.connectedComponentsWithAlgorithm()
+    coords = [pt for pt in labels if pt]
+    print(len(centroids))
+    # pyr = cv2.pyrDown(src)
+    # timg = cv2.pyrUp(pyr)
+    # regions = skm.regionprops(src)
+    print(len(regions))
+    pts = [region.coords for region in regions if inThresholdRange(region, area_thresh, 10)]
+    new_src = np.zeros(src.shape[:2], dtype=np.uint8)
+    cv2.drawContours(new_src, pts, -1, 255, cv2.FILLED)
+    # gray, contours, hierarcy = cv2.findContours(timg, method=cv2.RETR_LIST,
+    #                                             mode=cv2.CHAIN_APPROX_NONE)
+    # max_area = cv2.contourArea(max(contours, key=cv2.contourArea))
+    # min_area = cv2.contourArea(min(contours, key=cv2.contourArea))
+    # high = (max_area - min_area) * 0.7
+    # for i, contour in enumerate(contours):
+    #     approx = cv2.approxPolyDP(contour, cv2.arcLength(contour, True) * 0.02, True)
+    #     if len(approx) <= approx_thresh and cv2.contourArea(contour) < area_thresh:
+    #         cv2.drawContours(new_src, [contour], -1, 255, cv2.FILLED)
+    return new_src
+
+
+def inThresholdRange(region, area_thresh, rect_ration_thresh):
+    area_in_range = region.area < area_thresh
+    ratio = 0
+    rect = cv2.minAreaRect(region.coords)
+    rect_width = np.int(rect[1][0])
+    rect_height = np.int(rect[1][1])
+    if rect_width == 0 or rect_height == 0:
+        return False
+    ratio = min(rect_width, rect_height) / max(rect_width, rect_height) * 100
+    ration_in_range = ratio < rect_ration_thresh
+    return area_thresh and ration_in_range
+
+
 def cleanPoly(src, poly):
     mask = np.ones(src.shape, dtype=np.uint8) * 255
     for p in poly:
@@ -190,7 +232,7 @@ def filterMatchedLine(pairs, matched_lines, shape, filtered_lines=None):
     right_lines = [l[1] for l in pairs]
     left_cross_pts = getCrossPointerSet(left_lines, shape)
     right_cross_pts = getCrossPointerSet(right_lines, shape)
-    if not left_cross_pts or not right_cross_pts:
+    if not len(left_cross_pts) or not len(right_cross_pts):
         raise Exception("Cross pointer set couldn't be empty.")
     avg_center = (np.mean(left_cross_pts, axis=0) + np.mean(right_cross_pts, axis=0)) / 2
     filtered_lines = [l for l in matched_lines if
@@ -210,7 +252,7 @@ def getCrossPointerSet(lines, shape, cross_pts=None):
             if pt[0] == -1 and pt[1] == -1:
                 continue
             cross_pts.append(pt)
-    return cross_pts
+    return np.array(cross_pts)
 
 
 if __name__ == '__main__':
