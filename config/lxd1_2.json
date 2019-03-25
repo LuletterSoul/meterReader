@@ -27,6 +27,7 @@
   "contoursThreshold": 100,
   "areaThresh": 50,
   "approxThresh": 10,
+  "rebuildModelDisThreshRatio": 0.10,
   "rectRationThresh": 30,
   "enableGaussianBlur": false
 }

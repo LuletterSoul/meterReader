@@ -41,5 +41,6 @@
   "areaThresh": 500,
   "approxThresh": 8,
   "rectRationThresh": 30,
-  "enableGaussianBlur": true
+  "enableGaussianBlur": true,
+  "rebuildModelDisThreshRatio": 0.02
 }

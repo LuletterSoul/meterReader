@@ -209,7 +209,7 @@ def load(config, img_dir, meter_id):
 def getMeterModel(img, info):
     model, auto_canny = extractMeterModel(img, info)
     shape = img.shape
-    t = min(shape[0], shape[1]) * 0.02
+    t = min(shape[0], shape[1]) * info['rebuildModelDisThreshRatio']
     debug_src = auto_canny.copy()
     debug_src = cv2.cvtColor(debug_src, cv2.COLOR_GRAY2BGR)
     cv2.circle(debug_src, (model[0], model[1]), model[2], color=(255, 0, 0), thickness=1)
@@ -259,23 +259,35 @@ def rebuildScaleLines(auto_canny, model, threshold, start_pt=None, end_pt=None):
     detector = cv2.createLineSegmentDetector()
     lines, width, prec, nfa = detector.detect(auto_canny)
     model_center = [model[0], model[1]]
-    descriptors, left_lines_set, right_lines_set, line_avg_len = extractScaleLineFromSrc(lines, model, model_center,
-                                                                                         threshold)
+    descriptors, left_lines_set, right_lines_set, line_avg_len = buildLineDescriptors(lines, model, model_center,
+                                                                                      threshold)
     start_pt, end_pt = calStartEndRange(left_lines_set, right_lines_set, line_avg_len)
     lines = np.array([line[0] for line in descriptors])
     detector.drawSegments(debug_src, lines)
-    if start_pt[0] != -1 and end_pt[0] != -1:
-        cv2.circle(debug_src, (start_pt[0], start_pt[1]), 5,
-                   (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)), 2)
-        cv2.circle(debug_src, (end_pt[0], end_pt[1]), 5,
-                   (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)), 2)
-    else:
-        raise Exception("Start and end point not found.")
+    if start_pt[0] == -1 and end_pt[0] == -1:
+        start_pt, end_pt = setDefaultRange(left_lines_set, right_lines_set)
+        # raise Exception("Start and end point not found.")
+    cv2.circle(debug_src, (start_pt[0], start_pt[1]), 5,
+               (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)), 2)
+    cv2.circle(debug_src, (end_pt[0], end_pt[1]), 5,
+               (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)), 2)
     plot.subImage(src=debug_src, index=plot.next_idx(), title="Rebuild Scale Lines")
     return lines, start_pt, end_pt
 
 
-def extractScaleLineFromSrc(lines, model, model_center, threshold):
+def setDefaultRange(left_lines_set, right_lines_set, start_pt=None, end_pt=None):
+    left_lines_set = sorted(left_lines_set, key=lambda el: el[6])
+    right_lines_set = sorted(right_lines_set, key=lambda el: el[6])
+    if len(left_lines_set) > len(right_lines_set):
+        start_pt = left_lines_set[0][2]
+        end_pt = left_lines_set[len(left_lines_set) - 1][2]
+    else:
+        start_pt = right_lines_set[0][2]
+        end_pt = right_lines_set[len(right_lines_set) - 1][2]
+    return start_pt, end_pt
+
+
+def buildLineDescriptors(lines, model, model_center, threshold):
     descriptors = []
     line_avg_len = 0
     vertical_vector = np.array([0, 1])
@@ -287,7 +299,9 @@ def extractScaleLineFromSrc(lines, model, model_center, threshold):
         # scale line intersect with circle
         start = np.array([l[0], l[1]])
         end = np.array([l[2], l[3]])
+        # distance between scale line intersection pt and model center.
         insec_with_model = LU.getDistPtToLine(model_center, start, end) < threshold
+        # distance between scale line center and circle model margin.
         center_in_model = np.abs(EuclideanDistance(model_center, line_center) - model[2]) < threshold
         if insec_with_model and center_in_model:
             line_vector = getLineVector(start, end, model_center)
@@ -436,4 +450,4 @@ if __name__ == '__main__':
     finally:
         plot.show(save=True)
     # print(res)
-    # print(res2)
+    print(res2)
