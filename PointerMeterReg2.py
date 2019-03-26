@@ -108,7 +108,7 @@ def read(image, info):
     thresh = filtered_thresh
     # plot.subImage(src=filtered_thresh, index=plot.next_idx(), title='Filtered Threshold', cmap='gray')
     # load meter calibration form configuration
-    model, start_ptr, end_ptr = getMeterModel(src, info)
+    model, start_ptr, end_ptr = getPointerInstrumentModel(src, info)
     center = np.array([model[0], model[1]])
     radius = model[2]
     hlt = np.array([center[0] - radius, center[1]])  # 通过圆心的水平线与圆的左交点
@@ -133,13 +133,17 @@ def read(image, info):
     cv2.circle(src, (start_ptr[0], start_ptr[1]), 5, (0, 0, 255), -1)
     cv2.circle(src, (end_ptr[0], end_ptr[1]), 5, (0, 0, 255), -1)
     cv2.circle(src, (center[0], center[1]), 2, (0, 0, 255), -1)
-    # plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), index=plot.next_idx(), title='Calibration Info')
+    cv2.circle(src, (line_ptr[0], line_ptr[1]), 3, (255, 0, 0), cv2.FILLED)
+    plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), index=plot.next_idx(), title='Calibration Info')
     start_value = info['startValue']
     total = info['totalValue']
     value = AngleFactory.calPointerValueByPoint(startPoint=start_ptr, endPoint=end_ptr,
                                                 centerPoint=center,
                                                 point=line_ptr, startValue=start_value,
                                                 totalValue=total)
+    print(start_ptr)
+    print(end_ptr)
+    print(line_ptr)
     return value
 
 
@@ -194,7 +198,7 @@ def readPressureValueFromImg(img, info):
 
 def init(meter_id, img_dir, config):
     img, info = load(config, img_dir, meter_id)
-    getMeterModel(img, info)
+    getPointerInstrumentModel(img, info)
 
 
 def load(config, img_dir, meter_id):
@@ -206,8 +210,18 @@ def load(config, img_dir, meter_id):
     return img, info
 
 
-def getMeterModel(img, info):
-    model, auto_canny = extractMeterModel(img, info)
+def getPointerInstrumentModel(img, info):
+    """
+    this function will get a fitting instrument model from a ideal image
+    :param img:  input image
+    :param info: contains all adjustable and configurable parameters,related to the intelligent instrument reading
+                 algorithm
+    :return:    geometric model of pointer instrument like circle , ellipse .
+                two key points to settle reading range
+    """
+    model, start_pt, end_pt, auto_canny = estimateInstrumentModel(img, info)
+    if not info['isEnableRebuild']:
+        return model, start_pt, end_pt
     shape = img.shape
     t = min(shape[0], shape[1]) * info['rebuildModelDisThreshRatio']
     debug_src = auto_canny.copy()
@@ -215,7 +229,7 @@ def getMeterModel(img, info):
     cv2.circle(debug_src, (model[0], model[1]), model[2], color=(255, 0, 0), thickness=1)
     plot.subImage(src=debug_src, index=plot.next_idx(), title="Model")
     rebuild_lines, start_pt, end_pt = rebuildScaleLines(auto_canny, model, t)
-    best_model = fitCenter(rebuild_lines, auto_canny.shape)
+    best_model, _, _ = fitCenter(rebuild_lines, shape, info['rasancDst'])
     print("Lose :", np.abs(best_model - model))
     return best_model, start_pt, end_pt
 
@@ -255,11 +269,24 @@ def analysis(src, info):
 
 
 def rebuildScaleLines(auto_canny, model, threshold, start_pt=None, end_pt=None):
+    """
+    After special image processing, the image may lose some features.We are indeed to protect the scale line feature.
+    In this case, scale line reconstruction is needed based on the binary image with the least missing features.
+    :param auto_canny:binary image with the least missing features, make hypothesis it contains almost all scale line
+           feature
+    :param model: model obtained by Ransac fitting algorithm
+    :param threshold: distance threshold used to build the descriptors
+    :param start_pt: start point coordinate vector of instrument range
+    :param end_pt: end point coordinate vector of instrument range
+    :return:scale line descriptors
+    """
     debug_src = np.zeros([auto_canny.shape[0], auto_canny.shape[1], 3], dtype=np.uint8)
+    line_src = debug_src.copy()
     detector = cv2.createLineSegmentDetector()
     lines, width, prec, nfa = detector.detect(auto_canny)
-    model_center = [model[0], model[1]]
-    descriptors, left_lines_set, right_lines_set, line_avg_len = buildLineDescriptors(lines, model, model_center,
+    detector.drawSegments(line_src, lines)
+    plot.subImage(src=line_src, index=plot.next_idx(), title="All Lines")
+    descriptors, left_lines_set, right_lines_set, line_avg_len = buildLineDescriptors(lines, model,
                                                                                       threshold)
     start_pt, end_pt = calStartEndRange(left_lines_set, right_lines_set, line_avg_len)
     lines = np.array([line[0] for line in descriptors])
@@ -276,6 +303,14 @@ def rebuildScaleLines(auto_canny, model, threshold, start_pt=None, end_pt=None):
 
 
 def setDefaultRange(left_lines_set, right_lines_set, start_pt=None, end_pt=None):
+    """
+    set the default range when cannot find the start and end of the range
+    :param left_lines_set:
+    :param right_lines_set:
+    :param start_pt:
+    :param end_pt:
+    :return:
+    """
     left_lines_set = sorted(left_lines_set, key=lambda el: el[6])
     right_lines_set = sorted(right_lines_set, key=lambda el: el[6])
     if len(left_lines_set) > len(right_lines_set):
@@ -287,9 +322,24 @@ def setDefaultRange(left_lines_set, right_lines_set, start_pt=None, end_pt=None)
     return start_pt, end_pt
 
 
-def buildLineDescriptors(lines, model, model_center, threshold):
+def buildLineDescriptors(lines, model, threshold):
+    """
+    build line descriptors , a descriptor is composed by
+    1.line metadata including coords of staring point and end point
+    2.line len
+    3.line center ,calculated by start pt and end pt
+    4.start pt coordinates
+    5.end pt coordinates
+    6.the line vector angle with reference vector
+    :param lines: line metadata returned by LSD'algorithm
+    :param model: fitting model by previous Ransac algorithom
+    :param threshold: distance thresh to eliminate non-scale-lines
+    :return:
+    """
     descriptors = []
     line_avg_len = 0
+    model_center = [model[0], model[1]]
+    radius = model[2]
     vertical_vector = np.array([0, 1])
     left_lines_set = []
     right_lines_set = []
@@ -303,17 +353,16 @@ def buildLineDescriptors(lines, model, model_center, threshold):
         insec_with_model = LU.getDistPtToLine(model_center, start, end) < threshold
         # distance between scale line center and circle model margin.
         center_in_model = np.abs(EuclideanDistance(model_center, line_center) - model[2]) < threshold
-        if insec_with_model and center_in_model:
-            line_vector = getLineVector(start, end, model_center)
-            angle = AngleFactory.calAngleClockwiseByVector(vertical_vector, line_vector)
-            line_len = EuclideanDistance(start, end)
+        line_len = EuclideanDistance(start, end)
+        # line thresh for filtering len line ,which don't belong to scale line obviously
+        is_len_proper = line_len < radius * 0.25
+        if insec_with_model and center_in_model and is_len_proper:
             line_avg_len += line_len
-            descriptor = [line, line_len, line_center, start, end, line_vector]
-            if angle <= np.pi:
-                descriptor.append(angle)
+            angle, is_left, line_vector = buildLineVector(start, end, model_center, vertical_vector)
+            descriptor = [line, line_len, line_center, start, end, line_vector, angle]
+            if is_left:
                 left_lines_set.append(descriptor)
             else:
-                descriptor.append(np.pi * 2 - angle)
                 right_lines_set.append(descriptor)
             descriptors.append(descriptor)
     len_des = len(descriptors)
@@ -321,6 +370,37 @@ def buildLineDescriptors(lines, model, model_center, threshold):
         raise Exception("Not found line descriptors.")
     line_avg_len /= len(descriptors)
     return descriptors, left_lines_set, right_lines_set, line_avg_len
+
+
+def buildLineVector(start, end, model_center, reference):
+    """
+    calculate angle between line vector and reference vector
+    :param start: line starting point
+    :param end:  line end point
+    :param model_center: model center for calculating distance
+    :param reference: vector own reference property
+    :return:angle ,a boolean to judge line whether is in the left of reference or not,line vector
+    """
+    line_vector = getLineVector(start, end, model_center)
+    angle, is_left = calClockwiseAngleWithReferenceVector(line_vector, reference)
+    return angle, is_left, line_vector
+
+
+def calClockwiseAngleWithReferenceVector(line_vector, reference_vector):
+    """
+    calculate clockwise vector with reference vector,
+    if angle is greater than np.pi ,substract np.pi for
+    obtaining symmetrical scale lines at the forward algorithm procedure
+    :param line_vector:
+    :param reference_vector:
+    :return: angle
+    """
+    angle = AngleFactory.calAngleClockwiseByVector(reference_vector, line_vector)
+    if angle <= np.pi:
+        return angle, True
+    else:
+        angle = np.pi * 2 - angle
+        return angle, False
 
 
 def calStartEndRange(left_lines_set, right_lines_set, len_thresh, start_pt=None, end_pt=None):
@@ -344,8 +424,16 @@ def calStartEndRange(left_lines_set, right_lines_set, len_thresh, start_pt=None,
 
 
 def getLineVector(start, end, model_center, line_vector=None):
+    """
+    :param start: line staring point
+    :param end: line end point
+    :param model_center: model center
+    :param line_vector: vector ,whose orientation is from center point to outline.
+    :return:
+    """
     pt1_ds = EuclideanDistance(start, model_center)
     pt2_ds = EuclideanDistance(end, model_center)
+    # find farthest point
     if pt1_ds > pt2_ds:
         line_vector = start - end
     else:
@@ -353,18 +441,63 @@ def getLineVector(start, end, model_center, line_vector=None):
     return np.array(line_vector)
 
 
-def extractMeterModel(src, info, lines=None):
+def list_bisection_search(list, e, lo, hi=None):
+    if hi is None:
+        hi = len(list)
+    if lo < 0:
+        raise ValueError("Low boundary cannot least 0.")
+    while lo < hi:
+        mi = (lo + hi) // 2
+        if e < list[mi]:
+            hi = mi
+        elif list[mi] < e:
+            lo = mi + 1
+        else:
+            return mi
+    return -1
+
+
+def estimateInstrumentModel(src, info, rough_lines=None):
+    """
+    estimate a instrument model
+    :param src:
+    :param info:
+    :param rough_lines:
+    :return:
+    """
     # src = meterFinderByTemplate(image, info["template"])
     auto_canny = autoCanny(src)
-    lines = extractScaleLines(auto_canny, info)
-    return fitCenter(lines, info['template'].shape), auto_canny
-    # src = cv2.GaussianBlur(src, (3, 3), sigmaX=0, sigmaY=0)
-    # src = cv2.fastNlMeansDenoisingColored(src, h=7, templateWindowSize=7, searchWindowSize=21)
+    rough_lines = extractRoughScaleLines(auto_canny, info)
+    model, line_centers, inliers_idx = fitCenter(rough_lines, info['template'].shape, info['rasancDst'])
+    center = [model[0], model[1]]
+    vertical_vector = np.array([0, 1])
+    descriptors = []
+    for idx, line in enumerate(rough_lines):
+        # determine if the idx is in inliers or not
+        if list_bisection_search(inliers_idx, idx, 0) == -1:
+            continue
+        # is inliers
+        line = line[0]
+        start = np.array([line[0], line[1]])
+        end = np.array([line[2], line[3]])
+        angle, _, _, = buildLineVector(start, end, center, vertical_vector)
+        descriptors.append([line_centers[idx], angle])
+    descriptors = sorted(descriptors, key=lambda el: el[1])
+    # start point and end point's coordinates are estimated,could be selectively use.
+    if len(descriptors) == 0:
+        raise ValueError('Fit failed.')
+    start_pt = np.int32(descriptors[0][0])
+    end_pt = np.int32(descriptors[len(descriptors) - 1][0])
+    return model, start_pt, end_pt, auto_canny
 
-    # Auto Canny + Mask
+
+# src = cv2.GaussianBlur(src, (3, 3), sigmaX=0, sigmaY=0)
+# src = cv2.fastNlMeansDenoisingColored(src, h=7, templateWindowSize=7, searchWindowSize=21)
+
+# Auto Canny + Mask
 
 
-def extractScaleLines(src, info):
+def extractRoughScaleLines(src, info):
     auto_canny = LSF.cleanNotInterestedFeatureByProps(src, area_thresh=info['areaThresh'],
                                                       approx_thresh=info['approxThresh'],
                                                       rect_ration_thresh=info['rectRationThresh'])
@@ -372,12 +505,17 @@ def extractScaleLines(src, info):
     plot.subImage(src=auto_canny, index=plot.next_idx(), title='Binary Src After cleaning', cmap='gray')
     auto_canny = cv2.ximgproc.thinning(auto_canny, thinningType=cv2.ximgproc.THINNING_ZHANGSUEN)
     plot.subImage(src=auto_canny, index=plot.next_idx(), title='Thinning', cmap='gray')
-    # extract scale lines
     detector = cv2.createLineSegmentDetector()
+    # extract all lines contours using LSD algorithm
     _lines, width, prec, nfa = detector.detect(auto_canny)
+    # only consider the points in image range
+    # _lines = np.array(
+    #    [_line for _line in _lines if _line[0][0] > 0 and _line[0][1] and _line[0][2] > 0 and _line[0][3] > 0])
     debug_src = np.zeros([src.shape[0], src.shape[1], 3], dtype=np.uint8)
     detector.drawSegments(debug_src, _lines)
     # detector.drawSegments(line_src, _lines)
+    # double match lines in accordance with the LSD functionality
+    # which splits a linear contour to two thin line
     lines, approx_center = LSF.filter(_lines, debug_src.shape)
     plot.subImage(src=imutils.opencv2matplotlib(debug_src), index=plot.next_idx(), title='Noising Line Scale')
     return lines
@@ -407,30 +545,35 @@ def autoCanny(src):
     return auto_canny
 
 
-def fitCenter(lines, shape):
+def fitCenter(lines, shape, dst_thresh):
     detector = cv2.createLineSegmentDetector()
     # debug image
     debug_src = np.zeros([shape[0], shape[1], 3], dtype=np.uint8)
     detector.drawSegments(debug_src, lines)
+    dst_thresh = min(shape[0], shape[1]) * 0.01
+    print("Ransac Thresh", dst_thresh)
     # compose a proper format for RASANC algorithm
     line_centers = [np.array([(l[0][0] + l[0][2]) / 2, (l[0][1] + l[0][3]) / 2]) for l in lines]
     optimal = np.round(len(line_centers) * 0.9)  # expected optimal result
-    for c in line_centers:
-        cv2.circle(debug_src, (np.int32(c[0]), np.int32(c[1])), 4, (0, 255, 0), cv2.FILLED)
     # use random sample consensus to fit a best circle model
-    best_circle, max_fit_num, best_consensus_pointers = rasan.randomSampleConsensus(data=line_centers,
-                                                                                    max_iterations=200,
-                                                                                    optimal_consensus_num=optimal,
-                                                                                    dst_threshold=min(shape[0],
-                                                                                                      shape[1]) * 0.01)
+    best_circle, max_fit_num, inliers_idx = rasan.randomSampleConsensus(data=line_centers,
+                                                                        max_iterations=200,
+                                                                        optimal_consensus_num=optimal,
+                                                                        dst_threshold=dst_thresh)
     best_circle = np.int32(best_circle)
-    for c in line_centers:
+    for idx, c in enumerate(line_centers):
         c = np.int32(c)
-        cv2.line(debug_src, (best_circle[0], best_circle[1]), (c[0], c[1]), color=(255, 0, 0), thickness=1)
-    cv2.circle(debug_src, (best_circle[0], best_circle[1]), 5, color=(0, 255, 0), thickness=cv2.FILLED)
-    cv2.circle(debug_src, (best_circle[0], best_circle[1]), best_circle[2], color=(0, 0, 255), thickness=1)
+        # display inliers points and lines with center
+        if list_bisection_search(inliers_idx, idx, 0) != -1:
+            cv2.circle(debug_src, (np.int32(c[0]), np.int32(c[1])), 3, (0, 255, 0), cv2.FILLED)
+            cv2.line(debug_src, (best_circle[0], best_circle[1]), (c[0], c[1]), color=(255, 0, 0), thickness=1)
+        # display outlier points
+        else:
+            cv2.circle(debug_src, (np.int32(c[0]), np.int32(c[1])), 3, (255, 255, 255), cv2.FILLED)
+    # display model center
+    cv2.circle(debug_src, (best_circle[0], best_circle[1]), 10, color=(0, 0, 255), thickness=cv2.FILLED)
     plot.subImage(src=imutils.opencv2matplotlib(debug_src), index=plot.next_idx(), title='Fitting Circle Model')
-    return best_circle
+    return best_circle, line_centers, inliers_idx
 
 
 if __name__ == '__main__':
