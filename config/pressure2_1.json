@@ -37,10 +37,12 @@
       62
     ]
   ],
+  "rasancDst": 20,
   "contoursThreshold": 100,
   "areaThresh": 500,
   "approxThresh": 8,
   "rectRationThresh": 30,
   "enableGaussianBlur": true,
-  "rebuildModelDisThreshRatio": 0.02
+  "rebuildModelDisThreshRatio": 0.02,
+  "isEnableRebuild": true
 }

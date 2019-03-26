@@ -22,6 +22,7 @@
     "x": 286,
     "y": 180
   },
+  "rasancDst": 20,
   "startValue": 0.0,
   "totalValue": 200.0,
   "contoursThreshold": 100,
@@ -29,5 +30,6 @@
   "approxThresh": 10,
   "rebuildModelDisThreshRatio": 0.10,
   "rectRationThresh": 30,
-  "enableGaussianBlur": false
+  "enableGaussianBlur": false,
+  "isEnableRebuild": false
 }
