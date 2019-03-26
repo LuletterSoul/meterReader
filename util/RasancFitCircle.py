@@ -56,11 +56,11 @@ def randomSampleConsensus(data, best_circle=None, max_iterations=None, dst_thres
             continue
         if idx3 == idx2:
             continue
-        consensus_pointers = [data[idx1], data[idx2], data[idx3]]
+        consensus_pointers = [idx1, idx2, idx3]
         # 三点确定一个圆
         circle = getCircle(data[idx1], data[idx2], data[idx3])
         # 求剩余点的拟合程度
-        current_fit_num = fitNum(data, circle, dst_threshold, [idx1, idx2, idx3], consensus_pointers)
+        current_fit_num, _ = fitNum(data, circle, dst_threshold, [idx1, idx2, idx3], consensus_pointers)
         # 如果当前得到的inliers数目超过了拟合的阈值，且拟合到的点数量超过了inliers threshold，则认为找到了一个更好的模型
         if current_fit_num > max_fit_num and current_fit_num > inliers_threshold:
             max_fit_num = current_fit_num
@@ -71,8 +71,8 @@ def randomSampleConsensus(data, best_circle=None, max_iterations=None, dst_thres
             print("Algorithm in-advance termination,current iteration:{},actual requested {}".format(i, max_iterations))
             break
     if max_fit_num == 0:
-        print("Could not fit a circle from data.")
-    return best_circle, max_fit_num, best_consensus_pointers
+        raise ValueError("Could not fit a circle from data.")
+    return best_circle, max_fit_num, sorted(best_consensus_pointers)
 
 
 def fitNum(pointers, circle, threshold, inliers, consensus_pointers=None):
@@ -92,8 +92,8 @@ def fitNum(pointers, circle, threshold, inliers, consensus_pointers=None):
             continue
         if math.fabs(distance(pointers[i], center) - radius) < threshold:
             num += 1
-            consensus_pointers.append(pointers[i])
-    return num
+            consensus_pointers.append(i)
+    return num, consensus_pointers
 
 
 def distance(pt1, pt2):
