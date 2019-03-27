@@ -367,7 +367,7 @@ def getPoints(center, radious, angle):
 
 
 def findPointerFromBinarySpace(src, center, radius, radians_low=0, radians_high=2 * np.pi, patch_degree=1.0,
-                               ptr_resolution=5, clean_ration=0.16):
+                               ptr_resolution=5, clean_ration=0.16, avg_len=None):
     """
     接收一张预处理过的二值图（默认较完整保留了指针信息），指针的轮廓应为白色，
     从通过圆心水平线与圆的左交点开始，连接圆心顺时针建立直线遮罩，取出遮罩范围下的区域,
@@ -391,6 +391,7 @@ def findPointerFromBinarySpace(src, center, radius, radians_low=0, radians_high=
     high = math.degrees(radians_high)
     mask_info = []
     iteration = np.abs(int((high - low) / patch_degree))
+    avg_len *= 3
     for i in range(iteration):
         # 建立一个大小跟输入一致的全黑图像
         # 每次旋转patch_degree度，取圆上一点
@@ -405,7 +406,11 @@ def findPointerFromBinarySpace(src, center, radius, radians_low=0, radians_high=
         and_img = cv2.bitwise_and(pointer_mask, img)
         img, white_contours, h = cv2.findContours(img, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
         not_zero_intensity = cv2.countNonZero(and_img)
+        if avg_len is not None and not_zero_intensity <avg_len:
+            continue
         mask_info.append((not_zero_intensity, theta))
+    if not len(mask_info):
+        return None, -1, [-1, -1]
     # 按灰度和从大到小排列
     mask_info = sorted(mask_info, key=lambda m: m[0], reverse=True)
     best_theta = mask_info[0][1] % 360

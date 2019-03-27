@@ -1,9 +1,5 @@
 from Common import *
-from collections import defaultdict
-import imutils
-import skimage.measure as skm
 from LineUtils import getCrossPoint, getDistPtToLine
-import util.PlotUtil as plot
 
 thresh1 = 20
 thresh2 = 25

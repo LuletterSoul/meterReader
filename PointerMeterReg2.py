@@ -2,7 +2,6 @@ from Common import *
 import json
 import util.PlotUtil as plot
 from util import RasancFitCircle as rasan
-from skimage.filters import threshold_otsu
 import random
 
 import imutils
@@ -108,7 +107,7 @@ def read(image, info):
     thresh = filtered_thresh
     # plot.subImage(src=filtered_thresh, index=plot.next_idx(), title='Filtered Threshold', cmap='gray')
     # load meter calibration form configuration
-    model, start_ptr, end_ptr = getPointerInstrumentModel(src, info)
+    model, start_ptr, end_ptr, avg_len = getPointerInstrumentModel(src, info)
     center = np.array([model[0], model[1]])
     radius = model[2]
     hlt = np.array([center[0] - radius, center[1]])  # 通过圆心的水平线与圆的左交点
@@ -122,10 +121,13 @@ def read(image, info):
     ptr_resolution = 5
     clean_ration = 0
     # 从特定范围搜索指针
-    pointer_mask, theta, line_ptr = findPointerFromBinarySpace(thresh, center, radius, start_radians,
+    pointer_mask, theta, line_ptr = findPointerFromBinarySpace(thresh, center, radius / 2, start_radians,
                                                                end_radians,
                                                                patch_degree=0.5,
-                                                               ptr_resolution=ptr_resolution, clean_ration=clean_ration)
+                                                               ptr_resolution=ptr_resolution, clean_ration=clean_ration,
+                                                               avg_len=avg_len)
+    if line_ptr[0] == -1:
+        return 0
     line_ptr = cv2PtrTuple2D(line_ptr)
     plot.subImage(src=cv2.bitwise_or(thresh, pointer_mask), index=plot.next_idx(), title='pointer', cmap='gray')
     cv2.line(src, (start_ptr[0], start_ptr[1]), (center[0], center[1]), color=(0, 0, 255), thickness=1)
@@ -219,9 +221,9 @@ def getPointerInstrumentModel(img, info):
     :return:    geometric model of pointer instrument like circle , ellipse .
                 two key points to settle reading range
     """
-    model, start_pt, end_pt, auto_canny = estimateInstrumentModel(img, info)
+    model, start_pt, end_pt, auto_canny, avg_len = estimateInstrumentModel(img, info)
     if not info['isEnableRebuild']:
-        return model, start_pt, end_pt
+        return model, start_pt, end_pt,avg_len
     shape = img.shape
     t = min(shape[0], shape[1]) * info['rebuildModelDisThreshRatio']
     debug_src = auto_canny.copy()
@@ -231,7 +233,7 @@ def getPointerInstrumentModel(img, info):
     rebuild_lines, start_pt, end_pt = rebuildScaleLines(auto_canny, model, t)
     best_model, _, _ = fitCenter(rebuild_lines, shape, info['rasancDst'])
     print("Lose :", np.abs(best_model - model))
-    return best_model, start_pt, end_pt
+    return best_model, start_pt, end_pt, avg_len
 
 
 def analysisConnectedComponentsProps(meter_id, img_dir, config):
@@ -472,6 +474,7 @@ def estimateInstrumentModel(src, info, rough_lines=None):
     center = [model[0], model[1]]
     vertical_vector = np.array([0, 1])
     descriptors = []
+    avg_len = 0
     for idx, line in enumerate(rough_lines):
         # determine if the idx is in inliers or not
         if list_bisection_search(inliers_idx, idx, 0) == -1:
@@ -480,15 +483,17 @@ def estimateInstrumentModel(src, info, rough_lines=None):
         line = line[0]
         start = np.array([line[0], line[1]])
         end = np.array([line[2], line[3]])
+        avg_len += EuclideanDistance(start, end)
         angle, _, _, = buildLineVector(start, end, center, vertical_vector)
         descriptors.append([line_centers[idx], angle])
     descriptors = sorted(descriptors, key=lambda el: el[1])
     # start point and end point's coordinates are estimated,could be selectively use.
     if len(descriptors) == 0:
         raise ValueError('Fit failed.')
+    avg_len /= len(inliers_idx)
     start_pt = np.int32(descriptors[0][0])
     end_pt = np.int32(descriptors[len(descriptors) - 1][0])
-    return model, start_pt, end_pt, auto_canny
+    return model, start_pt, end_pt, auto_canny, avg_len
 
 
 # src = cv2.GaussianBlur(src, (3, 3), sigmaX=0, sigmaY=0)

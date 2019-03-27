@@ -64,7 +64,7 @@ def readPressure(image, info):
         start_radians = -start_radians
     end_radians = AngleFactory.calAngleClockwise(hlt, end_ptr, center)
     # 从特定范围搜索指针
-    pointer_mask, theta, line_ptr = findPointerFromBinarySpace(thresh, center, radius, start_radians,
+    pointer_mask, theta, line_ptr = findPointerFromBinarySpace(thresh, center, radius / 2, start_radians,
                                                                end_radians,
                                                                patch_degree=0.5,
                                                                ptr_resolution=ptr_resolution, clean_ration=clean_ration)
