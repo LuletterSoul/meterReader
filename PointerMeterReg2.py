@@ -143,9 +143,6 @@ def read(image, info):
                                                 centerPoint=center,
                                                 point=line_ptr, startValue=start_value,
                                                 totalValue=total)
-    print(start_ptr)
-    print(end_ptr)
-    print(line_ptr)
     return value
 
 
@@ -223,7 +220,7 @@ def getPointerInstrumentModel(img, info):
     """
     model, start_pt, end_pt, auto_canny, avg_len = estimateInstrumentModel(img, info)
     if not info['isEnableRebuild']:
-        return model, start_pt, end_pt,avg_len
+        return model, start_pt, end_pt, avg_len
     shape = img.shape
     t = min(shape[0], shape[1]) * info['rebuildModelDisThreshRatio']
     debug_src = auto_canny.copy()
@@ -593,9 +590,12 @@ if __name__ == '__main__':
     try:
         # analysisConnectedComponentsProps('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
         # initExtractScaleLine('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
-        # res = readPressureValueFromDir('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
-        res2 = readPressureValueFromDir('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
+        start = cv2.getTickCount()
+        res = readPressureValueFromDir('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
+        t = (cv2.getTickCount() - start) / cv2.getTickFrequency()
+        print("Time consumption: ", t)
+        # res2 = readPressureValueFromDir('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
     finally:
+        print(res)
         plot.show(save=True)
-    # print(res)
-    print(res2)
+    # print(res2)
