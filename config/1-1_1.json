@@ -37,7 +37,7 @@
   "result": 0.0,
   "rasancDst": 20,
   "contoursThreshold": 100,
-  "areaThresh": 30,
+  "areaThresh": 50,
   "approxThresh": 10,
   "rebuildModelDisThreshRatio": 0.10,
   "rectRationThresh": 30,

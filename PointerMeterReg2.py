@@ -468,6 +468,7 @@ def estimateInstrumentModel(src, info, rough_lines=None):
     # src = meterFinderByTemplate(image, info["template"])
     auto_canny = autoCanny(src)
     rough_lines = extractRoughScaleLines(auto_canny, info)
+    print("Rough lines number : ", len(rough_lines))
     model, line_centers, inliers_idx = fitCenter(rough_lines, info['template'].shape, info['rasancDst'])
     center = [model[0], model[1]]
     vertical_vector = np.array([0, 1])
@@ -588,6 +589,7 @@ if __name__ == '__main__':
     # res6 = readPressureValueFromDir('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
     # init('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
     # analysisConnectedComponentsProps('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
+    res5 = 0
     try:
         # analysisConnectedComponentsProps('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
         # initExtractScaleLine('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
@@ -595,12 +597,16 @@ if __name__ == '__main__':
         # res = readPressureValueFromDir('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
         # res2 = readPressureValueFromDir('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
         # res3 = readPressureValueFromDir('lxd2_1', 'image/lxd2.jpg', 'config/lxd2_1.json')
-        res4 = readPressureValueFromDir('lxd3_1', 'image/lxd3.jpg', 'config/lxd3_1.json')
+        # res4 = readPressureValueFromDir('lxd3_1', 'image/lxd3.jpg', 'config/lxd3_1.json')
+        res5 = readPressureValueFromDir('1-1_1', 'image/1-1.jpg', 'config/1-1_1.json')
+        # res6 = readPressureValueFromDir('1-1_2', 'image/1-1.jpg', 'config/1-1_2.json')
+        # res7 = readPressureValueFromDir('1-1_2', 'image/1-2.jpg', 'config/1-2_1.json')
+        # res8 = readPressureValueFromDir('1-2_2', 'image/1-2.jpg', 'config/1-2_2.json')
         t = (cv2.getTickCount() - start) / cv2.getTickFrequency()
         print("Time consumption: ", t)
     finally:
         # print(res)
         # print(res2)
         # print(res3)
-        print(res4)
+        print(res5)
         plot.show(save=True)
