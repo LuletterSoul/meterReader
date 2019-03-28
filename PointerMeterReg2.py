@@ -88,7 +88,7 @@ def readPressure(image, info):
 
 def read(image, info):
     src = meterFinderBySIFT(image, info["template"])
-    # plot.subImage(src=cv2.cvtColor(image, cv2.COLOR_BGR2RGB), index=plot.next_idx(), title='Original Image')
+    plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), index=plot.next_idx(), title='Original Image')
     if info['enableGaussianBlur']:
         src = cv2.GaussianBlur(src, (3, 3), sigmaX=0, sigmaY=0, borderType=cv2.BORDER_DEFAULT)
     gray = cv2.cvtColor(src=src, code=cv2.COLOR_RGB2GRAY)
@@ -126,10 +126,8 @@ def read(image, info):
                                                                patch_degree=0.5,
                                                                ptr_resolution=ptr_resolution, clean_ration=clean_ration,
                                                                avg_len=avg_len)
-    if line_ptr[0] == -1:
-        return 0
-    line_ptr = cv2PtrTuple2D(line_ptr)
-    plot.subImage(src=cv2.bitwise_or(thresh, pointer_mask), index=plot.next_idx(), title='pointer', cmap='gray')
+    if pointer_mask:
+        plot.subImage(src=cv2.bitwise_or(thresh, pointer_mask), index=plot.next_idx(), title='pointer', cmap='gray')
     cv2.line(src, (start_ptr[0], start_ptr[1]), (center[0], center[1]), color=(0, 0, 255), thickness=1)
     cv2.line(src, (end_ptr[0], end_ptr[1]), (center[0], center[1]), color=(0, 0, 255), thickness=1)
     cv2.circle(src, (start_ptr[0], start_ptr[1]), 5, (0, 0, 255), -1)
@@ -137,6 +135,9 @@ def read(image, info):
     cv2.circle(src, (center[0], center[1]), 2, (0, 0, 255), -1)
     cv2.circle(src, (line_ptr[0], line_ptr[1]), 3, (255, 0, 0), cv2.FILLED)
     plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), index=plot.next_idx(), title='Calibration Info')
+    if line_ptr[0] == -1:
+        return 0
+    line_ptr = cv2PtrTuple2D(line_ptr)
     start_value = info['startValue']
     total = info['totalValue']
     value = AngleFactory.calPointerValueByPoint(startPoint=start_ptr, endPoint=end_ptr,
@@ -591,11 +592,15 @@ if __name__ == '__main__':
         # analysisConnectedComponentsProps('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
         # initExtractScaleLine('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
         start = cv2.getTickCount()
-        res = readPressureValueFromDir('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
+        # res = readPressureValueFromDir('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
+        # res2 = readPressureValueFromDir('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
+        # res3 = readPressureValueFromDir('lxd2_1', 'image/lxd2.jpg', 'config/lxd2_1.json')
+        res4 = readPressureValueFromDir('lxd3_1', 'image/lxd3.jpg', 'config/lxd3_1.json')
         t = (cv2.getTickCount() - start) / cv2.getTickFrequency()
         print("Time consumption: ", t)
-        # res2 = readPressureValueFromDir('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
     finally:
-        print(res)
+        # print(res)
+        # print(res2)
+        # print(res3)
+        print(res4)
         plot.show(save=True)
-    # print(res2)
