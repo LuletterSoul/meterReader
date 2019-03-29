@@ -38,9 +38,11 @@
   "rasancDst": 20,
   "contoursThreshold": 100,
   "areaThresh": 50,
-  "approxThresh": 10,
+  "approxThresh": 15,
+  "lineMatchedCenterDstDiff": 20,
+  "lineMatchedAngleDiff": 2,
   "rebuildModelDisThreshRatio": 0.10,
-  "rectRationThresh": 30,
+  "rectRationThresh": 40,
   "enableGaussianBlur": false,
   "isEnableRebuild": false
 }

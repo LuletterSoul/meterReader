@@ -3,6 +3,7 @@ import json
 import util.PlotUtil as plot
 from util import RasancFitCircle as rasan
 import random
+from DeHaze import deHaze
 
 import imutils
 import LineSegmentFilter as LSF
@@ -107,7 +108,7 @@ def read(image, info):
     thresh = filtered_thresh
     # plot.subImage(src=filtered_thresh, index=plot.next_idx(), title='Filtered Threshold', cmap='gray')
     # load meter calibration form configuration
-    model, start_ptr, end_ptr, avg_len = getPointerInstrumentModel(src, info)
+    model, start_ptr, end_ptr, avg_len = getPointerInstrumentModel(enhance(src), info)
     center = np.array([model[0], model[1]])
     radius = model[2]
     hlt = np.array([center[0] - radius, center[1]])  # 通过圆心的水平线与圆的左交点
@@ -517,10 +518,13 @@ def extractRoughScaleLines(src, info):
     #    [_line for _line in _lines if _line[0][0] > 0 and _line[0][1] and _line[0][2] > 0 and _line[0][3] > 0])
     debug_src = np.zeros([src.shape[0], src.shape[1], 3], dtype=np.uint8)
     detector.drawSegments(debug_src, _lines)
+    plot.subImage(src=imutils.opencv2matplotlib(debug_src), index=plot.next_idx(),
+                  title='Line Segments Detected by LSD algorithm')
+    debug_src = np.zeros([src.shape[0], src.shape[1], 3], dtype=np.uint8)
     # detector.drawSegments(line_src, _lines)
     # double match lines in accordance with the LSD functionality
     # which splits a linear contour to two thin line
-    lines, approx_center = LSF.filter(_lines, debug_src.shape)
+    lines, approx_center = LSF.matchScaleLines(_lines, debug_src.shape)
     plot.subImage(src=imutils.opencv2matplotlib(debug_src), index=plot.next_idx(), title='Noising Line Scale')
     return lines
 
@@ -580,6 +584,40 @@ def fitCenter(lines, shape, dst_thresh):
     return best_circle, line_centers, inliers_idx
 
 
+def enhance(src):
+    gray = cv2.cvtColor(src, cv2.COLOR_RGB2GRAY)
+    normalize = np.zeros(gray.shape)
+    cv2.normalize(gray, normalize, 0, 1, cv2.NORM_MINMAX)
+    # plot.subImage(src=normalize, index=plot.next_idx(), title='Gray', cmap='gray')
+    # plot.subImage(src=gray, index=plot.next_idx(), title='Gray', cmap='gray')
+    laplace = cv2.Laplacian(gray, cv2.CV_8UC1, ksize=3)
+    abs_labplace = cv2.convertScaleAbs(laplace)
+    # plot.subImage(src=abs_labplace, index=plot.next_idx(), title='Laplace', cmap='gray')
+    # cv2.normalize(abs_labplace, abs_labplace)
+    overlay = cv2.subtract(gray, laplace)
+    # plot.subImage(src=overlay, index=plot.next_idx(), title='Overlay by Gray + Laplace', cmap='gray')
+    sobel_x = cv2.convertScaleAbs(cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3))
+    sobel_y = cv2.convertScaleAbs(cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3))
+    grad = cv2.addWeighted(sobel_x, 0.5, sobel_y, 0.5, 0)
+    # plot.subImage(src=grad, index=plot.next_idx(), title='Grad', cmap='gray')
+    media_blur = cv2.medianBlur(gray, 3)
+    # plot.subImage(src=abs_labplace, index=plot.next_idx(), title='Media Blurred', cmap='gray')
+    mask = cv2.multiply(media_blur, overlay)
+    # plot.subImage(src=abs_labplace, index=plot.next_idx(), title='Mask', cmap='gray')
+    enhance = cv2.add(mask, gray)
+    # plot.subImage(src=enhance, index=plot.next_idx(), title='Enhance', cmap='gray')
+    return cv2.cvtColor(enhance, cv2.COLOR_GRAY2BGR)
+
+
+def test_enhancement():
+    #
+    img = cv2.imread('image/1-1.jpg')
+    # img = cv2.imread('image/WechatIMG40.png')
+    template = cv2.imread('template/1-1_1.jpg')
+    src = meterFinderBySIFT(img, template)
+    enhance(src)
+
+
 if __name__ == '__main__':
     # res1 = readPressureValueFromDir('lxd1_4', 'image/lxd1.jpg', 'config/lxd1_4.json')
     # res2 = readPressureValueFromDir('szk2_1', 'image/szk2.jpg', 'config/szk2_1.json')
@@ -602,6 +640,7 @@ if __name__ == '__main__':
         # res6 = readPressureValueFromDir('1-1_2', 'image/1-1.jpg', 'config/1-1_2.json')
         # res7 = readPressureValueFromDir('1-1_2', 'image/1-2.jpg', 'config/1-2_1.json')
         # res8 = readPressureValueFromDir('1-2_2', 'image/1-2.jpg', 'config/1-2_2.json')
+        # test_enhancement()
         t = (cv2.getTickCount() - start) / cv2.getTickFrequency()
         print("Time consumption: ", t)
     finally:
