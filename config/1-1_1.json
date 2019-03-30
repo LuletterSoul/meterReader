@@ -36,13 +36,18 @@
   "digitType": "False",
   "result": 0.0,
   "rasancDst": 20,
+  "kernelSize": 2,
   "contoursThreshold": 100,
   "areaThresh": 50,
   "approxThresh": 15,
+  "enableFitting": true,
   "lineMatchedCenterDstDiff": 20,
   "lineMatchedAngleDiff": 2,
   "rebuildModelDisThreshRatio": 0.10,
   "rectRationThresh": 40,
   "enableGaussianBlur": false,
-  "isEnableRebuild": false
+  "isEnableRebuild": true,
+  "searchRadius": 0.5,
+  "ptRegAlgType": 0,
+  "enableLineThinning": false
 }

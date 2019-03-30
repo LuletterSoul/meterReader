@@ -1,15 +1,18 @@
 from Common import *
+from DebugSwitcher import is_debugging, is_save
 import json
 import util.PlotUtil as plot
 from util import RasancFitCircle as rasan
+from util.StoreUtil import DataSaver
 import random
+import os
+import time
 from DeHaze import deHaze
-
 import imutils
 import LineSegmentFilter as LSF
 import LineUtils as LU
 
-plot_index = 0
+saver = DataSaver()
 
 
 def normalPressure(image, info):
@@ -89,6 +92,7 @@ def readPressure(image, info):
 
 def read(image, info):
     src = meterFinderBySIFT(image, info["template"])
+    saver.saveImg(src, 'image_by_shift')
     plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), index=plot.next_idx(), title='Original Image')
     if info['enableGaussianBlur']:
         src = cv2.GaussianBlur(src, (3, 3), sigmaX=0, sigmaY=0, borderType=cv2.BORDER_DEFAULT)
@@ -108,9 +112,26 @@ def read(image, info):
     thresh = filtered_thresh
     # plot.subImage(src=filtered_thresh, index=plot.next_idx(), title='Filtered Threshold', cmap='gray')
     # load meter calibration form configuration
-    model, start_ptr, end_ptr, avg_len = getPointerInstrumentModel(enhance(src), info)
-    center = np.array([model[0], model[1]])
-    radius = model[2]
+    center = [-1, -1]
+    radius = 0
+    start_ptr = [-1, -1]
+    end_ptr = [-1, -1]
+    avg_len = 0
+    start_value = info['startValue']
+    total = info['totalValue']
+    if info['enableFitting']:
+        model, start_ptr, end_ptr, avg_len = getPointerInstrumentModel(src, info)
+        center = np.array([model[0], model[1]])
+        radius = model[2]
+    else:
+        center = np.array([info["centerPoint"]["x"], info["centerPoint"]["y"]])
+        start_ptr = np.array([info["startPoint"]["x"], info["startPoint"]["y"]])
+        end_ptr = np.array([info["endPoint"]["x"], info["endPoint"]["y"]])
+    cv2.line(src, (start_ptr[0], start_ptr[1]), (center[0], center[1]), color=(0, 0, 255), thickness=1)
+    cv2.line(src, (end_ptr[0], end_ptr[1]), (center[0], center[1]), color=(0, 0, 255), thickness=1)
+    cv2.circle(src, (start_ptr[0], start_ptr[1]), 5, (0, 0, 255), -1)
+    cv2.circle(src, (end_ptr[0], end_ptr[1]), 5, (0, 0, 255), -1)
+    cv2.circle(src, (center[0], center[1]), 2, (0, 0, 255), -1)
     hlt = np.array([center[0] - radius, center[1]])  # 通过圆心的水平线与圆的左交点
     # 计算起点向量、终点向量与过圆心的左水平线的夹角
     start_radians = AngleFactory.calAngleClockwise(start_ptr, hlt, center)
@@ -121,26 +142,28 @@ def read(image, info):
     end_radians = AngleFactory.calAngleClockwise(hlt, end_ptr, center)
     ptr_resolution = 5
     clean_ration = 0
-    # 从特定范围搜索指针
-    pointer_mask, theta, line_ptr = findPointerFromBinarySpace(thresh, center, radius / 2, start_radians,
-                                                               end_radians,
-                                                               patch_degree=0.5,
-                                                               ptr_resolution=ptr_resolution, clean_ration=clean_ration,
-                                                               avg_len=avg_len)
-    if pointer_mask:
-        plot.subImage(src=cv2.bitwise_or(thresh, pointer_mask), index=plot.next_idx(), title='pointer', cmap='gray')
-    cv2.line(src, (start_ptr[0], start_ptr[1]), (center[0], center[1]), color=(0, 0, 255), thickness=1)
-    cv2.line(src, (end_ptr[0], end_ptr[1]), (center[0], center[1]), color=(0, 0, 255), thickness=1)
-    cv2.circle(src, (start_ptr[0], start_ptr[1]), 5, (0, 0, 255), -1)
-    cv2.circle(src, (end_ptr[0], end_ptr[1]), 5, (0, 0, 255), -1)
-    cv2.circle(src, (center[0], center[1]), 2, (0, 0, 255), -1)
-    cv2.circle(src, (line_ptr[0], line_ptr[1]), 3, (255, 0, 0), cv2.FILLED)
+    pt_reg_alg_type = info['ptRegAlgType']
+    if pt_reg_alg_type == 0:
+        # 从特定范围搜索指针
+        pointer_mask, theta, line_ptr = findPointerFromBinarySpace(thresh, center, radius * info['searchRadius'],
+                                                                   start_radians,
+                                                                   end_radians,
+                                                                   patch_degree=0.5,
+                                                                   ptr_resolution=ptr_resolution,
+                                                                   clean_ration=clean_ration,
+                                                                   avg_len=avg_len)
+        if pointer_mask is not None:
+            pm = cv2.bitwise_or(thresh, pointer_mask)
+            plot.subImage(src=pm, index=plot.next_idx(), title='pointer', cmap='gray')
+            saver.saveImg(pm, 'pointer_mast')
+    elif pt_reg_alg_type == 1:
+        value, line_ptr = scanPointer(src, [start_ptr, end_ptr, center], start_value, total)
+    cv2.circle(src, (line_ptr[0], line_ptr[1]), 5, (0, 255, 0), cv2.FILLED)
     plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), index=plot.next_idx(), title='Calibration Info')
+    saver.saveImg(src, 'model_center_range')
     if line_ptr[0] == -1:
         return 0
     line_ptr = cv2PtrTuple2D(line_ptr)
-    start_value = info['startValue']
-    total = info['totalValue']
     value = AngleFactory.calPointerValueByPoint(startPoint=start_ptr, endPoint=end_ptr,
                                                 centerPoint=center,
                                                 point=line_ptr, startValue=start_value,
@@ -182,13 +205,21 @@ def cv2PtrTuple2D(tuple):
 
 
 def readPressureValueFromDir(meter_id, img_dir, config):
+    global saver
     img = cv2.imread(img_dir)
     file = open(config)
     info = json.load(file)
+    if info['type'] != 'normalPressure':
+        return -1
     assert info is not None
+    saver = DataSaver('data/', meter_id)
+    print("Img: ", meter_id)
     info["template"] = cv2.imread("template/" + meter_id + ".jpg")
     # return readPressureValueFromImg(img, info)
-    return read(img, info)
+    res = read(img, info)
+    print("Result: ", res)
+    print()
+    return res
 
 
 def readPressureValueFromImg(img, info):
@@ -229,6 +260,7 @@ def getPointerInstrumentModel(img, info):
     debug_src = cv2.cvtColor(debug_src, cv2.COLOR_GRAY2BGR)
     cv2.circle(debug_src, (model[0], model[1]), model[2], color=(255, 0, 0), thickness=1)
     plot.subImage(src=debug_src, index=plot.next_idx(), title="Model")
+    saver.saveImg(debug_src, 'approx_model')
     rebuild_lines, start_pt, end_pt = rebuildScaleLines(auto_canny, model, t)
     best_model, _, _ = fitCenter(rebuild_lines, shape, info['rasancDst'])
     print("Lose :", np.abs(best_model - model))
@@ -245,7 +277,7 @@ def analysisConnectedComponentsProps(meter_id, img_dir, config):
     # gray = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 3, 10)
     # retval, gray = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
     # thresh = (gray > threshold_otsu(gray)) * 1
-    analysis(autoCanny(roi), info)
+    analysis(autoCanny(roi, info), info)
 
 
 def analysis(src, info):
@@ -287,6 +319,7 @@ def rebuildScaleLines(auto_canny, model, threshold, start_pt=None, end_pt=None):
     lines, width, prec, nfa = detector.detect(auto_canny)
     detector.drawSegments(line_src, lines)
     plot.subImage(src=line_src, index=plot.next_idx(), title="All Lines")
+    saver.saveImg(line_src, 'all_lines')
     descriptors, left_lines_set, right_lines_set, line_avg_len = buildLineDescriptors(lines, model,
                                                                                       threshold)
     start_pt, end_pt = calStartEndRange(left_lines_set, right_lines_set, line_avg_len)
@@ -300,6 +333,7 @@ def rebuildScaleLines(auto_canny, model, threshold, start_pt=None, end_pt=None):
     cv2.circle(debug_src, (end_pt[0], end_pt[1]), 5,
                (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)), 2)
     plot.subImage(src=debug_src, index=plot.next_idx(), title="Rebuild Scale Lines")
+    saver.saveImg(debug_src, 'rebuild_scale_lines')
     return lines, start_pt, end_pt
 
 
@@ -312,14 +346,15 @@ def setDefaultRange(left_lines_set, right_lines_set, start_pt=None, end_pt=None)
     :param end_pt:
     :return:
     """
+    left_lines_set.extend(right_lines_set)
     left_lines_set = sorted(left_lines_set, key=lambda el: el[6])
     right_lines_set = sorted(right_lines_set, key=lambda el: el[6])
-    if len(left_lines_set) > len(right_lines_set):
-        start_pt = left_lines_set[0][2]
-        end_pt = left_lines_set[len(left_lines_set) - 1][2]
-    else:
-        start_pt = right_lines_set[0][2]
-        end_pt = right_lines_set[len(right_lines_set) - 1][2]
+    # if len(left_lines_set) > len(right_lines_set):
+    start_pt = left_lines_set[0][2]
+    end_pt = left_lines_set[len(left_lines_set) - 1][2]
+    # else:
+    #     start_pt = right_lines_set[0][2]
+    #     end_pt = right_lines_set[len(right_lines_set) - 1][2]
     return start_pt, end_pt
 
 
@@ -467,9 +502,8 @@ def estimateInstrumentModel(src, info, rough_lines=None):
     :return:
     """
     # src = meterFinderByTemplate(image, info["template"])
-    auto_canny = autoCanny(src)
+    auto_canny = autoCanny(src, info)
     rough_lines = extractRoughScaleLines(auto_canny, info)
-    print("Rough lines number : ", len(rough_lines))
     model, line_centers, inliers_idx = fitCenter(rough_lines, info['template'].shape, info['rasancDst'])
     center = [model[0], model[1]]
     vertical_vector = np.array([0, 1])
@@ -508,8 +542,11 @@ def extractRoughScaleLines(src, info):
                                                       rect_ration_thresh=info['rectRationThresh'])
     # auto_canny = LSF.cleanNotInterestedFeature(src)
     plot.subImage(src=auto_canny, index=plot.next_idx(), title='Binary Src After cleaning', cmap='gray')
-    auto_canny = cv2.ximgproc.thinning(auto_canny, thinningType=cv2.ximgproc.THINNING_ZHANGSUEN)
-    plot.subImage(src=auto_canny, index=plot.next_idx(), title='Thinning', cmap='gray')
+    saver.saveImg(auto_canny, 'after_cleaning_noise')
+    if info['enableLineThinning']:
+        auto_canny = cv2.ximgproc.thinning(auto_canny, thinningType=cv2.ximgproc.THINNING_ZHANGSUEN)
+        plot.subImage(src=auto_canny, index=plot.next_idx(), title='Thinning', cmap='gray')
+        saver.saveImg(auto_canny, 'thinning_auto_canny')
     detector = cv2.createLineSegmentDetector()
     # extract all lines contours using LSD algorithm
     _lines, width, prec, nfa = detector.detect(auto_canny)
@@ -520,19 +557,23 @@ def extractRoughScaleLines(src, info):
     detector.drawSegments(debug_src, _lines)
     plot.subImage(src=imutils.opencv2matplotlib(debug_src), index=plot.next_idx(),
                   title='Line Segments Detected by LSD algorithm')
+    saver.saveImg(debug_src, 'line_segments_detected_by_LSD')
     debug_src = np.zeros([src.shape[0], src.shape[1], 3], dtype=np.uint8)
     # detector.drawSegments(line_src, _lines)
     # double match lines in accordance with the LSD functionality
     # which splits a linear contour to two thin line
     lines, approx_center = LSF.matchScaleLines(_lines, debug_src.shape)
+    detector.drawSegments(debug_src, lines)
     plot.subImage(src=imutils.opencv2matplotlib(debug_src), index=plot.next_idx(), title='Noising Line Scale')
+    saver.saveImg(debug_src, 'matched_scale_lines')
     return lines
 
 
-def autoCanny(src):
+def autoCanny(src, info):
     gray = cv2.cvtColor(src=src, code=cv2.COLOR_BGR2GRAY)
     gray = cv2.fastNlMeansDenoising(gray)
     gray_test = gray.copy()
+    kernel_size = info['kernelSize']
     # plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), index=plot.next_idx(), title='Fast denosing')
     # retval, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
     # gray_test, covex_mask = LSF.filterContex(gray_test)
@@ -544,12 +585,13 @@ def autoCanny(src):
     # plot.subImage(src=tm, index=plot.next_idx(), title='Thresh tm', cmap='gray')
     # plot.subImage(src=thresh, index=plot.next_idx(), title='Thresh_OTSU', cmap='gray')
     auto_canny = imutils.auto_canny(gray)
-    dilate_kernel = cv2.getStructuringElement(ksize=(3, 3), shape=cv2.MORPH_ELLIPSE)
-    erode_kernel = cv2.getStructuringElement(ksize=(3, 3), shape=cv2.MORPH_ELLIPSE)
+    dilate_kernel = cv2.getStructuringElement(ksize=(kernel_size, kernel_size), shape=cv2.MORPH_ELLIPSE)
+    erode_kernel = cv2.getStructuringElement(ksize=(kernel_size, kernel_size), shape=cv2.MORPH_ELLIPSE)
     # fill scale line with white pixels
     auto_canny = cv2.dilate(auto_canny, dilate_kernel)
     auto_canny = cv2.erode(auto_canny, erode_kernel)
     plot.subImage(src=auto_canny, index=plot.next_idx(), title='Auto Canny', cmap='gray')
+    saver.saveImg(auto_canny, 'auto_canny')
     return auto_canny
 
 
@@ -559,7 +601,7 @@ def fitCenter(lines, shape, dst_thresh):
     debug_src = np.zeros([shape[0], shape[1], 3], dtype=np.uint8)
     detector.drawSegments(debug_src, lines)
     dst_thresh = min(shape[0], shape[1]) * 0.01
-    print("Ransac Thresh", dst_thresh)
+    # print("Ransac Thresh", dst_thresh)
     # compose a proper format for RASANC algorithm
     line_centers = [np.array([(l[0][0] + l[0][2]) / 2, (l[0][1] + l[0][3]) / 2]) for l in lines]
     optimal = np.round(len(line_centers) * 0.9)  # expected optimal result
@@ -581,6 +623,7 @@ def fitCenter(lines, shape, dst_thresh):
     # display model center
     cv2.circle(debug_src, (best_circle[0], best_circle[1]), 10, color=(0, 0, 255), thickness=cv2.FILLED)
     plot.subImage(src=imutils.opencv2matplotlib(debug_src), index=plot.next_idx(), title='Fitting Circle Model')
+    saver.saveImg(debug_src, 'fitting_circle')
     return best_circle, line_centers, inliers_idx
 
 
@@ -627,25 +670,42 @@ if __name__ == '__main__':
     # res6 = readPressureValueFromDir('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
     # init('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
     # analysisConnectedComponentsProps('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
-    res5 = 0
-    try:
-        # analysisConnectedComponentsProps('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
-        # initExtractScaleLine('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
-        start = cv2.getTickCount()
-        # res = readPressureValueFromDir('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
-        # res2 = readPressureValueFromDir('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
-        # res3 = readPressureValueFromDir('lxd2_1', 'image/lxd2.jpg', 'config/lxd2_1.json')
-        # res4 = readPressureValueFromDir('lxd3_1', 'image/lxd3.jpg', 'config/lxd3_1.json')
-        res5 = readPressureValueFromDir('1-1_1', 'image/1-1.jpg', 'config/1-1_1.json')
-        # res6 = readPressureValueFromDir('1-1_2', 'image/1-1.jpg', 'config/1-1_2.json')
-        # res7 = readPressureValueFromDir('1-1_2', 'image/1-2.jpg', 'config/1-2_1.json')
-        # res8 = readPressureValueFromDir('1-2_2', 'image/1-2.jpg', 'config/1-2_2.json')
-        # test_enhancement()
-        t = (cv2.getTickCount() - start) / cv2.getTickFrequency()
-        print("Time consumption: ", t)
-    finally:
-        # print(res)
-        # print(res2)
-        # print(res3)
-        print(res5)
-        plot.show(save=True)
+    # img_main_dir = 'image/pointer'
+    # images = os.listdir(img_main_dir)
+    # config = os.listdir("config")
+    # for im in images:
+    #     img_dir = img_main_dir + os.path.sep + im
+    #     for i in range(1, 6):
+    #         meter_id = im.split(".jpg")[0] + "_" + str(i)
+    #         cfg_dir = meter_id + '.json'
+    #         if cfg_dir in config:
+    #             try:
+    #                 start = time.time()
+    #                 readPressureValueFromDir(meter_id, img_dir, 'config/' + cfg_dir)
+    #                 end = time.time()
+    #                 # print("Time consumption: ", end - start)
+    #             finally:
+    #                 plot.show()
+    # try:
+    #     # analysisConnectedComponentsProps('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
+    #     # initExtractScaleLine('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
+    #     start = cv2.getTickCount()
+    #     res = readPressureValueFromDir('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
+    #     # res2 = readPressureValueFromDir('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
+    #     # res3 = readPressureValueFromDir('lxd2_1', 'image/lxd2.jpg', 'config/lxd2_1.json')
+    #     # res4 = readPressureValueFromDir('lxd3_1', 'image/lxd3.jpg', 'config/lxd3_1.json')
+    #     # res5 = readPressureValueFromDir('1-1_1', 'image/1-1.jpg', 'config/1-1_1.json')
+    #     # res6 = readPressureValueFromDir('1-1_2', 'image/1-1.jpg', 'config/1-1_2.json')
+            res7 = readPressureValueFromDir('1-1_2', 'image/1-2.jpg', 'config/1-2_1.json')
+    #     # res8 = readPressureValueFromDir('1-2_2', 'image/1-2.jpg', 'config/1-2_2.json')
+    #     # test_enhancement()
+    #     t = (cv2.getTickCount() - start) / cv2.getTickFrequency()
+    #     print("Time consumption: ", t)
+    # finally:
+    #     print(res)
+    #     # print(res2)
+    #     # print(res3)
+    #     # print(res5)
+    #     #  print(res6)
+    #     # print(res8)
+    #     plot.show(save=True)

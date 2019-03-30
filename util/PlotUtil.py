@@ -2,6 +2,7 @@ from matplotlib import pyplot as plt
 import cv2
 import time
 import os
+import multiprocessing as mp
 from DebugSwitcher import is_debugging
 
 PLOT_ROW = 20

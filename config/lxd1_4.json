@@ -3,7 +3,7 @@
   "horizontal": 10.0,
   "vertical": 20.0,
   "name": "lxd1_4",
-  "type": "normalPressure",
+  "type": "rmalPressure",
   "ROI": {
     "x": 712,
     "y": 858,

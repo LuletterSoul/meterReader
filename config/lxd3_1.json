@@ -31,5 +31,12 @@
   "rebuildModelDisThreshRatio": 0.10,
   "rectRationThresh": 30,
   "enableGaussianBlur": false,
-  "isEnableRebuild": false
+  "isEnableRebuild": false,
+  "kernelSize": 2,
+  "enableFitting": true,
+  "lineMatchedCenterDstDiff": 20,
+  "lineMatchedAngleDiff": 2,
+  "searchRadius": 0.5,
+  "ptRegAlgType": 0,
+  "enableLineThinning": false
 }

@@ -341,7 +341,7 @@ def scanPointer(meter, pts, startVal, endVal):
     # cv2.circle(meter, (outerPoint[0], outerPoint[1]), 10, (0, 0, 255), -1)
     # cv2.imshow("test", meter)
     # cv2.waitKey(0)
-    return degree
+    return degree, outerPoint
 
 
 def EuclideanDistance(pt1, pt2):
@@ -406,7 +406,7 @@ def findPointerFromBinarySpace(src, center, radius, radians_low=0, radians_high=
         and_img = cv2.bitwise_and(pointer_mask, img)
         img, white_contours, h = cv2.findContours(img, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
         not_zero_intensity = cv2.countNonZero(and_img)
-        if avg_len is not None and not_zero_intensity <avg_len:
+        if avg_len is not None and not_zero_intensity < avg_len:
             continue
         mask_info.append((not_zero_intensity, theta))
     if not len(mask_info):
