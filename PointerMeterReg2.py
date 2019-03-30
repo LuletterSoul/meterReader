@@ -1,5 +1,5 @@
 from Common import *
-from DebugSwitcher import is_debugging, is_save
+from DebugSwitcher import is_plot, is_save
 import json
 import util.PlotUtil as plot
 from util import RasancFitCircle as rasan
@@ -92,7 +92,7 @@ def readPressure(image, info):
 
 def read(image, info):
     if info['matchTemplateType'] == 1:
-        src = meterFinderBySIFT(image, info["template"])
+        src = meterFinderBySIFT(image, info["template"], info)
     else:
         src = meterFinderByTemplate(image, info["template"])
     saver.saveImg(src, 'image_by_shift')
@@ -125,6 +125,8 @@ def read(image, info):
     total = info['totalValue']
     if info['enableFitting']:
         model, start_ptr, end_ptr, avg_len = getPointerInstrumentModel(src, info)
+        if model[0] == -1:
+            return -1
         center = np.array([model[0], model[1]])
         radius = model[2]
     else:
@@ -209,7 +211,7 @@ def cv2PtrTuple2D(tuple):
     return tuple
 
 
-def readPressureValueFromDir(meter_id, img_dir, config):
+def load(meter_id, img_dir, config):
     global saver
     img = cv2.imread(img_dir)
     file = open(config)
@@ -220,7 +222,7 @@ def readPressureValueFromDir(meter_id, img_dir, config):
     saver = DataSaver('data/', meter_id)
     print("Img: ", meter_id)
     info["template"] = cv2.imread("template/" + meter_id + ".jpg")
-    # return readPressureValueFromImg(img, info)
+    info["saver"] = saver
     res = read(img, info)
     print("Result: ", res)
     print()
@@ -238,15 +240,6 @@ def init(meter_id, img_dir, config):
     getPointerInstrumentModel(img, info)
 
 
-def load(config, img_dir, meter_id):
-    img = cv2.imread(img_dir)
-    file = open(config)
-    info = json.load(file)
-    assert info is not None
-    info["template"] = cv2.imread("template/" + meter_id + ".jpg")
-    return img, info
-
-
 def getPointerInstrumentModel(img, info):
     """
     this function will get a fitting instrument model from a ideal image
@@ -257,6 +250,8 @@ def getPointerInstrumentModel(img, info):
                 two key points to settle reading range
     """
     model, start_pt, end_pt, auto_canny, avg_len = estimateInstrumentModel(img, info)
+    if model[0] == -1:
+        return model, start_pt, end_pt, auto_canny, avg_len
     if not info['isEnableRebuild']:
         return model, start_pt, end_pt, avg_len
     shape = img.shape
@@ -268,7 +263,7 @@ def getPointerInstrumentModel(img, info):
     saver.saveImg(debug_src, 'approx_model')
     rebuild_lines, start_pt, end_pt = rebuildScaleLines(auto_canny, model, t)
     best_model, _, _ = fitCenter(rebuild_lines, shape, info['rasancDst'])
-    print("Lose :", np.abs(best_model - model))
+    # print("Lose :", np.abs(best_model - model))
     return best_model, start_pt, end_pt, avg_len
 
 
@@ -408,7 +403,7 @@ def buildLineDescriptors(lines, model, threshold):
             descriptors.append(descriptor)
     len_des = len(descriptors)
     if len_des == 0:
-        raise Exception("Not found line descriptors.")
+        print("Not found line descriptors.")
     line_avg_len /= len(descriptors)
     return descriptors, left_lines_set, right_lines_set, line_avg_len
 
@@ -510,6 +505,8 @@ def estimateInstrumentModel(src, info, rough_lines=None):
     auto_canny = autoCanny(src, info)
     rough_lines = extractRoughScaleLines(auto_canny, info)
     model, line_centers, inliers_idx = fitCenter(rough_lines, info['template'].shape, info['rasancDst'])
+    if model[0] == -1:
+        return model, [-1, -1], [-1, -1], None, -1
     center = [model[0], model[1]]
     vertical_vector = np.array([0, 1])
     descriptors = []
@@ -616,6 +613,8 @@ def fitCenter(lines, shape, dst_thresh):
                                                                         optimal_consensus_num=optimal,
                                                                         dst_threshold=dst_thresh)
     best_circle = np.int32(best_circle)
+    if best_circle[0] == -1:
+        return best_circle, [], []
     for idx, c in enumerate(line_centers):
         c = np.int32(c)
         # display inliers points and lines with center
@@ -695,14 +694,14 @@ if __name__ == '__main__':
     #     # analysisConnectedComponentsProps('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
     #     # initExtractScaleLine('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
     #     start = cv2.getTickCount()
-    #     res = readPressureValueFromDir('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
-    #     # res2 = readPressureValueFromDir('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
-    #     # res3 = readPressureValueFromDir('lxd2_1', 'image/lxd2.jpg', 'config/lxd2_1.json')
-    #     # res4 = readPressureValueFromDir('lxd3_1', 'image/lxd3.jpg', 'config/lxd3_1.json')
-    # res5 = readPressureValueFromDir('1-1_1', 'image/1-1.jpg', 'config/1-1_1.json')
-    #      res6 = readPressureValueFromDir('1-1_2', 'image/1-1.jpg', 'config/1-1_2.json')
-    # res7 = readPressureValueFromDir('1-2_1', 'image/1-2.jpg', 'config/1-2_1.json')
-    res8 = readPressureValueFromDir('1-2_2', 'image/1-2.jpg', 'config/1-2_2.json')
+    res = load('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
+    res2 = load('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
+    res3 = load('lxd2_1', 'image/lxd2.jpg', 'config/lxd2_1.json')
+    res4 = load('lxd3_1', 'image/lxd3.jpg', 'config/lxd3_1.json')
+    res5 = load('1-1_1', 'image/1-1.jpg', 'config/1-1_1.json')
+    res6 = load('1-1_2', 'image/1-1.jpg', 'config/1-1_2.json')
+    res7 = load('1-2_1', 'image/1-2.jpg', 'config/1-2_1.json')
+    res8 = load('1-2_2', 'image/1-2.jpg', 'config/1-2_2.json')
 #     # test_enhancement()
 #     t = (cv2.getTickCount() - start) / cv2.getTickFrequency()
 #     print("Time consumption: ", t)

@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import math
 from sklearn.metrics.pairwise import pairwise_distances
+from DebugSwitcher import is_debugging
 
 
 def meterFinderByTemplate(image, template):
@@ -34,7 +35,7 @@ def meterFinderByTemplate(image, template):
     return image[topLeft[1]:bottomRight[1], topLeft[0]:bottomRight[0]]
 
 
-def meterFinderBySIFT(image, template):
+def meterFinderBySIFT(image, template, info=None):
     """
     locate meter's bbox
     :param image: image
@@ -52,11 +53,15 @@ def meterFinderBySIFT(image, template):
     templateKeyPoint, templateDescriptor = sift.detectAndCompute(templateBlurred, None)
     imageKeyPoint, imageDescriptor = sift.detectAndCompute(imageBlurred, None)
 
-    # for debug
-    # templateBlurred = cv2.drawKeypoints(templateBlurred, templateKeyPoint, templateBlurred)
-    # imageBlurred = cv2.drawKeypoints(imageBlurred, imageKeyPoint, imageBlurred)
-    # cv2.imshow("template", templateBlurred)
-    # cv2.imshow("image", imageBlurred)
+    if is_debugging:
+        saver = info['saver']
+        templateBlurred = cv2.drawKeypoints(templateBlurred, templateKeyPoint, templateBlurred)
+        imageBlurred = cv2.drawKeypoints(imageBlurred, imageKeyPoint, imageBlurred)
+        saver.saveImg(templateBlurred, 'template_key_points')
+        saver.saveImg(imageBlurred, 'image_key_points')
+        # cv2.imshow("template", templateBlurred)
+        # cv2.imshow("image", imageBlurred)
+        # cv2.waitKey(0)
 
     # match
     bf = cv2.BFMatcher()
@@ -89,6 +94,13 @@ def meterFinderBySIFT(image, template):
     # matchImage = cv2.drawMatchesKnn(template, templateKeyPoint, image, imageKeyPoint, good2, None, flags=2)
     # cv2.imshow("matchImage", matchImage)
     # cv2.waitKey(0)
+
+    if is_debugging:
+        saver = info['saver']
+        matchImage = cv2.drawMatchesKnn(template, templateKeyPoint, image, imageKeyPoint, good2, None, flags=2)
+        saver.saveImg(matchImage, 'shift_match')
+        # cv2.imshow("matchImage", matchImage)
+        # cv2.waitKey(0)
 
     matchPointMatrix = np.array([list(imageKeyPoint[p[0].trainIdx].pt) for p in good2])
 

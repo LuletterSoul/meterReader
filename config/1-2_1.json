@@ -30,7 +30,7 @@
   "approxThresh": 15,
   "enableFitting": false,
   "lineMatchedCenterDstDiff": 20,
-  "lineMatchedAngleDiff": 2,
+  "lineMatchedAngleDiff": 5,
   "rebuildModelDisThreshRatio": 0.10,
   "rectRationThresh": 40,
   "enableGaussianBlur": false,
