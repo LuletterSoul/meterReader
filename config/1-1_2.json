@@ -48,6 +48,7 @@
   "enableGaussianBlur": false,
   "isEnableRebuild": true,
   "searchRadius": 0.5,
-  "ptRegAlgType": 0,
+  "ptRegAlgType": 1,
+  "matchTemplateType": 1,
   "enableLineThinning": false
 }

@@ -91,11 +91,15 @@ def readPressure(image, info):
 
 
 def read(image, info):
-    src = meterFinderBySIFT(image, info["template"])
+    if info['matchTemplateType'] == 1:
+        src = meterFinderBySIFT(image, info["template"])
+    else:
+        src = meterFinderByTemplate(image, info["template"])
     saver.saveImg(src, 'image_by_shift')
     plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), index=plot.next_idx(), title='Original Image')
     if info['enableGaussianBlur']:
         src = cv2.GaussianBlur(src, (3, 3), sigmaX=0, sigmaY=0, borderType=cv2.BORDER_DEFAULT)
+    copy_src = src.copy()
     gray = cv2.cvtColor(src=src, code=cv2.COLOR_RGB2GRAY)
     thresh = gray.copy()
     cv2.threshold(gray, 120, 255, cv2.THRESH_BINARY_INV, thresh)
@@ -127,11 +131,11 @@ def read(image, info):
         center = np.array([info["centerPoint"]["x"], info["centerPoint"]["y"]])
         start_ptr = np.array([info["startPoint"]["x"], info["startPoint"]["y"]])
         end_ptr = np.array([info["endPoint"]["x"], info["endPoint"]["y"]])
-    cv2.line(src, (start_ptr[0], start_ptr[1]), (center[0], center[1]), color=(0, 0, 255), thickness=1)
-    cv2.line(src, (end_ptr[0], end_ptr[1]), (center[0], center[1]), color=(0, 0, 255), thickness=1)
-    cv2.circle(src, (start_ptr[0], start_ptr[1]), 5, (0, 0, 255), -1)
-    cv2.circle(src, (end_ptr[0], end_ptr[1]), 5, (0, 0, 255), -1)
-    cv2.circle(src, (center[0], center[1]), 2, (0, 0, 255), -1)
+    cv2.line(copy_src, (start_ptr[0], start_ptr[1]), (center[0], center[1]), color=(0, 0, 255), thickness=1)
+    cv2.line(copy_src, (end_ptr[0], end_ptr[1]), (center[0], center[1]), color=(0, 0, 255), thickness=1)
+    cv2.circle(copy_src, (start_ptr[0], start_ptr[1]), 5, (0, 0, 255), -1)
+    cv2.circle(copy_src, (end_ptr[0], end_ptr[1]), 5, (0, 0, 255), -1)
+    cv2.circle(copy_src, (center[0], center[1]), 2, (0, 0, 255), -1)
     hlt = np.array([center[0] - radius, center[1]])  # 通过圆心的水平线与圆的左交点
     # 计算起点向量、终点向量与过圆心的左水平线的夹角
     start_radians = AngleFactory.calAngleClockwise(start_ptr, hlt, center)
@@ -157,10 +161,11 @@ def read(image, info):
             plot.subImage(src=pm, index=plot.next_idx(), title='pointer', cmap='gray')
             saver.saveImg(pm, 'pointer_mast')
     elif pt_reg_alg_type == 1:
-        value, line_ptr = scanPointer(src, [start_ptr, end_ptr, center], start_value, total)
-    cv2.circle(src, (line_ptr[0], line_ptr[1]), 5, (0, 255, 0), cv2.FILLED)
+        # value, line_ptr = scanPointer(src, [start_ptr, end_ptr, center], start_value, total)
+        value, line_ptr = scanPointer(src, info)
+    cv2.circle(copy_src, (line_ptr[0], line_ptr[1]), 5, (0, 255, 0), cv2.FILLED)
     plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), index=plot.next_idx(), title='Calibration Info')
-    saver.saveImg(src, 'model_center_range')
+    saver.saveImg(copy_src, 'model_center_range')
     if line_ptr[0] == -1:
         return 0
     line_ptr = cv2PtrTuple2D(line_ptr)
@@ -694,18 +699,18 @@ if __name__ == '__main__':
     #     # res2 = readPressureValueFromDir('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
     #     # res3 = readPressureValueFromDir('lxd2_1', 'image/lxd2.jpg', 'config/lxd2_1.json')
     #     # res4 = readPressureValueFromDir('lxd3_1', 'image/lxd3.jpg', 'config/lxd3_1.json')
-    #     # res5 = readPressureValueFromDir('1-1_1', 'image/1-1.jpg', 'config/1-1_1.json')
-    #     # res6 = readPressureValueFromDir('1-1_2', 'image/1-1.jpg', 'config/1-1_2.json')
-            res7 = readPressureValueFromDir('1-1_2', 'image/1-2.jpg', 'config/1-2_1.json')
-    #     # res8 = readPressureValueFromDir('1-2_2', 'image/1-2.jpg', 'config/1-2_2.json')
-    #     # test_enhancement()
-    #     t = (cv2.getTickCount() - start) / cv2.getTickFrequency()
-    #     print("Time consumption: ", t)
-    # finally:
-    #     print(res)
-    #     # print(res2)
-    #     # print(res3)
-    #     # print(res5)
-    #     #  print(res6)
-    #     # print(res8)
-    #     plot.show(save=True)
+    # res5 = readPressureValueFromDir('1-1_1', 'image/1-1.jpg', 'config/1-1_1.json')
+    #      res6 = readPressureValueFromDir('1-1_2', 'image/1-1.jpg', 'config/1-1_2.json')
+    # res7 = readPressureValueFromDir('1-2_1', 'image/1-2.jpg', 'config/1-2_1.json')
+    res8 = readPressureValueFromDir('1-2_2', 'image/1-2.jpg', 'config/1-2_2.json')
+#     # test_enhancement()
+#     t = (cv2.getTickCount() - start) / cv2.getTickFrequency()
+#     print("Time consumption: ", t)
+# finally:
+#     print(res)
+#     # print(res2)
+#     # print(res3)
+#     # print(res5)
+#     #  print(res6)
+#     # print(res8)
+#     plot.show(save=True)

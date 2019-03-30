@@ -40,5 +40,6 @@
   "lineMatchedAngleDiff": 2,
   "searchRadius": 0.5,
   "ptRegAlgType": 0,
+  "matchTemplateType": 1,
   "enableLineThinning": false
 }

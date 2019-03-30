@@ -51,5 +51,6 @@
   "isEnableRebuild": true,
   "searchRadius": 0.7,
   "ptRegAlgType": 0,
+  "matchTemplateType": 1,
   "enableLineThinning": true
 }

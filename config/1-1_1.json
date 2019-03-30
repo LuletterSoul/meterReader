@@ -47,7 +47,8 @@
   "rectRationThresh": 40,
   "enableGaussianBlur": false,
   "isEnableRebuild": true,
-  "searchRadius": 0.5,
-  "ptRegAlgType": 0,
+  "searchRadius": 0.7,
+  "ptRegAlgType": 1,
+  "matchTemplateType": 2,
   "enableLineThinning": false
 }
