@@ -52,5 +52,7 @@
   "searchRadius": 0.7,
   "ptRegAlgType": 0,
   "matchTemplateType": 1,
-  "enableLineThinning": true
+  "enableLineThinning": true,
+  "realValue": 1.51,
+  "res": -1
 }

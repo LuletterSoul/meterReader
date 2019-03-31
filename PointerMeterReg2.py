@@ -226,8 +226,24 @@ def load(meter_id, img_dir, config):
     print("Img: ", meter_id)
     info["template"] = cv2.imread("template/" + meter_id + ".jpg")
     info["saver"] = saver
+    start = time.time()
     res = read(img, info)
+    end = time.time()
+    consumption = round(end - start, 3)
     print("Result: ", res)
+    if 'realValue' in info:
+        print("Real Value:", info['realValue'])
+        real_value = info['realValue']
+        ration = 0
+        precision = 100
+        if res > 0:
+            ration = (res - real_value) / res * 100
+            precision = round(abs(ration), 3)
+        info['res'] = res
+        info['precision'] = str(precision) + '%'
+        info['consumption'] = consumption
+        print('Precision:{}%'.format(precision))
+        saver.saveConfig(info)
     print()
     return res
 

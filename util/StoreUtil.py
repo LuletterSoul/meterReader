@@ -1,6 +1,7 @@
 import time
 import cv2
 import os
+import json
 from DebugSwitcher import is_save
 
 
@@ -24,3 +25,18 @@ class DataSaver:
         img_dir = self.save_path + os.path.sep + str(len(os.listdir(self.save_path))) + '_' + name + '.png'
         cv2.imwrite(img_dir, img)
         return True
+
+    def saveConfig(self, info):
+        """
+        备份指定meterId的配置文件
+        :param meter_id:
+        :param config_base_dir:
+        :return:
+        """
+        save_config_path = os.path.join(self.save_path, self.meter_id + ".json")
+        info['template'] = None
+        if 'saver' in info and info['saver'] is not None:
+            info['saver'] = None
+        if not os.path.exists(save_config_path):
+            config = open(save_config_path, "w")
+            config.write(json.dumps(info, indent=4))
