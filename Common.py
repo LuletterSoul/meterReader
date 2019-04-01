@@ -53,7 +53,7 @@ def meterFinderBySIFT(image, template, info=None):
     templateKeyPoint, templateDescriptor = sift.detectAndCompute(templateBlurred, None)
     imageKeyPoint, imageDescriptor = sift.detectAndCompute(imageBlurred, None)
 
-    if is_debugging:
+    if is_debugging and 'saver' in info:
         saver = info['saver']
         info['imageKeyPointNum'] = len(imageKeyPoint)
         info['templateKeyPointNum'] = len(templateKeyPoint)
@@ -98,7 +98,7 @@ def meterFinderBySIFT(image, template, info=None):
     # cv2.imshow("matchImage", matchImage)
     # cv2.waitKey(0)
 
-    if is_debugging:
+    if is_debugging and 'saver' in info:
         saver = info['saver']
         matchImage = cv2.drawMatchesKnn(template, templateKeyPoint, image, imageKeyPoint, good2, None, flags=2)
         saver.saveImg(matchImage, 'shift_match')

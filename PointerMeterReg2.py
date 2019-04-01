@@ -215,6 +215,25 @@ def cv2PtrTuple2D(tuple):
     return tuple
 
 
+def shift(meter_id, img_dir, config):
+    img = cv2.imread(img_dir)
+    file = open(config)
+    info = json.load(file)
+    info["template"] = cv2.imread("template/an/" + meter_id + ".jpg")
+    print("Img: ", meter_id)
+    # ROI extract
+    x = info["ROI"]["x"]
+    y = info["ROI"]["y"]
+    w = info["ROI"]["w"]
+    h = info["ROI"]["h"]
+    r = img[y:y + h, x:x + w]
+    roi_dir = 'data/shift/' + meter_id + '_roi' + '.png'
+    cv2.imwrite(roi_dir, r)
+    roi = meterFinderBySIFT(r, info['template'], info)
+    shift_dir = 'data/shift/' + meter_id + '.png'
+    cv2.imwrite(shift_dir, roi)
+
+
 def load(meter_id, img_dir, config):
     global saver
     img = cv2.imread(img_dir)
@@ -700,31 +719,31 @@ def test_enhancement():
     enhance(src)
 
 
-if __name__ == '__main__':
-    # res1 = readPressureValueFromDir('lxd1_4', 'image/lxd1.jpg', 'config/lxd1_4.json')
-    # res2 = readPressureValueFromDir('szk2_1', 'image/szk2.jpg', 'config/szk2_1.json')
-    # res3 = readPressureValueFromDir('szk1_5', 'image/szk1.jpg', 'config/szk1_5.json')
-    # res4 = readPressureValueFromDir('wn1_5', 'image/wn1.jpg', 'config/wn1_5.json')
-    # res5 = readPressureValueFromDir('xyy3_1', 'image/xyy3.jpg', 'config/xyy3_1.json')
-    # res6 = readPressureValueFromDir('pressure2_1', 'image/pressure2.jpg', 'config/pressure2_1.json')
-    # init('pressure2_1', 'image/pressure2.jpg', 'config/pressure2_1.json')
-    # analysisConnectedComponentsProps('pressure2_1', 'image/pressure2.jpg', 'config/pressure2_1.json')
-    img_main_dir = 'image/pointer'
-    images = os.listdir(img_main_dir)
-    config = os.listdir("config")
-    for im in images:
-        img_dir = img_main_dir + os.path.sep + im
-        for i in range(1, 6):
-            meter_id = im.split(".jpg")[0] + "_" + str(i)
-            cfg_dir = meter_id + '.json'
-            if cfg_dir in config:
-                start = time.time()
-                load(meter_id, img_dir, 'config/' + cfg_dir)
-                # print("Time consumption: ", end - start)
-    # try:
-    #     # analysisConnectedComponentsProps('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
-    #     # initExtractScaleLine('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
-    #     start = cv2.getTickCount()
+# if __name__ == '__main__':
+#     # res1 = readPressureValueFromDir('lxd1_4', 'image/lxd1.jpg', 'config/lxd1_4.json')
+#     # res2 = readPressureValueFromDir('szk2_1', 'image/szk2.jpg', 'config/szk2_1.json')
+#     # res3 = readPressureValueFromDir('szk1_5', 'image/szk1.jpg', 'config/szk1_5.json')
+#     # res4 = readPressureValueFromDir('wn1_5', 'image/wn1.jpg', 'config/wn1_5.json')
+#     # res5 = readPressureValueFromDir('xyy3_1', 'image/xyy3.jpg', 'config/xyy3_1.json')
+#     # res6 = readPressureValueFromDir('pressure2_1', 'image/pressure2.jpg', 'config/pressure2_1.json')
+#     # init('pressure2_1', 'image/pressure2.jpg', 'config/pressure2_1.json')
+#     # analysisConnectedComponentsProps('pressure2_1', 'image/pressure2.jpg', 'config/pressure2_1.json')
+#     img_main_dir = 'image/pointer'
+#     images = os.listdir(img_main_dir)
+#     config = os.listdir("config")
+#     for im in images:
+#         img_dir = img_main_dir + os.path.sep + im
+#         for i in range(1, 6):
+#             meter_id = im.split(".jpg")[0] + "_" + str(i)
+#             cfg_dir = meter_id + '.json'
+#             if cfg_dir in config:
+#                 start = time.time()
+#                 load(meter_id, img_dir, 'config/' + cfg_dir)
+#                 # print("Time consumption: ", end - start)
+#     # try:
+#     #     # analysisConnectedComponentsProps('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
+#     #     # initExtractScaleLine('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
+#     #     start = cv2.getTickCount()
 #     res = load('pressure2_1', 'image/pressure2.jpg', 'config/pressure2_1.json')
 #     res2 = load('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
 #     res3 = load('lxd2_1', 'image/lxd2.jpg', 'config/lxd2_1.json')
@@ -744,3 +763,18 @@ if __name__ == '__main__':
 #     #  print(res6)
 #     # print(res8)
 #     plot.show(save=True)
+
+
+# test shift
+if __name__ == '__main__':
+    img_main_dir = 'image/anpressure'
+    images = os.listdir(img_main_dir)
+    config = os.listdir("labels/an")
+    for im in images:
+        img_dir = img_main_dir + os.path.sep + im
+        for i in range(1, 6):
+            meter_id = im.split(".JPG")[0] + "_" + str(i)
+            cfg_dir = meter_id + '.json'
+            if cfg_dir in config:
+                start = time.time()
+                shift(meter_id, img_dir, 'labels/an/' + cfg_dir)

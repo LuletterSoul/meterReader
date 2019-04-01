@@ -57,10 +57,10 @@ def selectROI(src):
     while True:
         cv2.imshow(window_name, img)
         # 按下m切换模式
-        if cv2.waitKey(1) == ord('m'):
+        if cv2.waitKey(0) == ord('m'):
             mode = not mode
         # Esc退出
-        elif cv2.waitKey(1) == 27:
+        elif cv2.waitKey(0) == 27:
             break
     r = regions.copy()
     regions.clear()
