@@ -96,7 +96,7 @@ def read(image, info):
     else:
         src = meterFinderByTemplate(image, info["template"])
     denoised = cv2.fastNlMeansDenoisingColored(src)
-    enhance(src)
+    # enhance(src)
     saver.saveImg(src, 'image_by_shift')
     saver.saveImg(denoised, 'denoising')
     src = denoised
@@ -232,20 +232,20 @@ def load(meter_id, img_dir, config):
     res = read(img, info)
     end = time.time()
     consumption = round(end - start, 3)
-    print("Result: ", res)
+    print("Reading Value: ", res)
     if 'realValue' in info:
         print("Real Value:", info['realValue'])
         real_value = info['realValue']
-        ration = 0
-        precision = 100
+        # calculate absolute error
+        abs_error = res - real_value / info['totalValue'] - info['startValue'] * 100
+        abs_error = round(abs_error, 3)
         if res > 0:
             ration = (res - real_value) / res * 100
-            precision = round(abs(ration), 3)
         info['res'] = res
-        info['precision'] = str(precision) + '%'
+        info['absError'] = str(abs_error) + ' %'
         info['consumption'] = consumption
-        print('Precision:{}%'.format(precision))
-        print('Consumption:{}'.format(consumption))
+        print('Absolute error :{} %'.format(abs_error))
+        print('Time consumption:{}'.format(consumption))
         saver.saveConfig(info)
     print()
     return res
@@ -706,38 +706,34 @@ if __name__ == '__main__':
     # res3 = readPressureValueFromDir('szk1_5', 'image/szk1.jpg', 'config/szk1_5.json')
     # res4 = readPressureValueFromDir('wn1_5', 'image/wn1.jpg', 'config/wn1_5.json')
     # res5 = readPressureValueFromDir('xyy3_1', 'image/xyy3.jpg', 'config/xyy3_1.json')
-    # res6 = readPressureValueFromDir('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
-    # init('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
-    # analysisConnectedComponentsProps('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
-    # img_main_dir = 'image/pointer'
-    # images = os.listdir(img_main_dir)
-    # config = os.listdir("config")
-    # for im in images:
-    #     img_dir = img_main_dir + os.path.sep + im
-    #     for i in range(1, 6):
-    #         meter_id = im.split(".jpg")[0] + "_" + str(i)
-    #         cfg_dir = meter_id + '.json'
-    #         if cfg_dir in config:
-    #             try:
-    #                 start = time.time()
-    #                 readPressureValueFromDir(meter_id, img_dir, 'config/' + cfg_dir)
-    #                 end = time.time()
-    #                 # print("Time consumption: ", end - start)
-    #             finally:
-    #                 plot.show()
+    # res6 = readPressureValueFromDir('pressure2_1', 'image/pressure2.jpg', 'config/pressure2_1.json')
+    # init('pressure2_1', 'image/pressure2.jpg', 'config/pressure2_1.json')
+    # analysisConnectedComponentsProps('pressure2_1', 'image/pressure2.jpg', 'config/pressure2_1.json')
+    img_main_dir = 'image/pointer'
+    images = os.listdir(img_main_dir)
+    config = os.listdir("config")
+    for im in images:
+        img_dir = img_main_dir + os.path.sep + im
+        for i in range(1, 6):
+            meter_id = im.split(".jpg")[0] + "_" + str(i)
+            cfg_dir = meter_id + '.json'
+            if cfg_dir in config:
+                start = time.time()
+                load(meter_id, img_dir, 'config/' + cfg_dir)
+                # print("Time consumption: ", end - start)
     # try:
     #     # analysisConnectedComponentsProps('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
     #     # initExtractScaleLine('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
     #     start = cv2.getTickCount()
-    res = load('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
-    res2 = load('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
-    res3 = load('lxd2_1', 'image/lxd2.jpg', 'config/lxd2_1.json')
-    res4 = load('lxd3_1', 'image/lxd3.jpg', 'config/lxd3_1.json')
-    res5 = load('1-1_1', 'image/1-1.jpg', 'config/1-1_1.json')
-    res6 = load('1-1_2', 'image/1-1.jpg', 'config/1-1_2.json')
-    res7 = load('1-2_1', 'image/1-2.jpg', 'config/1-2_1.json')
-    res8 = load('1-2_2', 'image/1-2.jpg', 'config/1-2_2.json')
-#     # test_enhancement()
+#     res = load('pressure2_1', 'image/pressure2.jpg', 'config/pressure2_1.json')
+#     res2 = load('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
+#     res3 = load('lxd2_1', 'image/lxd2.jpg', 'config/lxd2_1.json')
+#     res4 = load('lxd3_1', 'image/lxd3.jpg', 'config/lxd3_1.json')
+#     res5 = load('1-1_1', 'image/1-1.jpg', 'config/1-1_1.json')
+#     res6 = load('1-1_2', 'image/1-1.jpg', 'config/1-1_2.json')
+#     res7 = load('1-2_1', 'image/1-2.jpg', 'config/1-2_1.json')
+#     res8 = load('1-2_2', 'image/1-2.jpg', 'config/1-2_2.json')
+# #     # test_enhancement()
 #     t = (cv2.getTickCount() - start) / cv2.getTickFrequency()
 #     print("Time consumption: ", t)
 # finally:

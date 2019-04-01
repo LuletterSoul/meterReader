@@ -200,7 +200,7 @@ def readPressureValueFromImg(img, info):
 
 
 if __name__ == '__main__':
-    # readPressureValueFromDir('pressure2_1', 'image/pressure2_1.jpg', 'config/pressure2_1.json')
+    # readPressureValueFromDir('pressure2_1', 'image/pressure2.jpg', 'config/pressure2_1.json')
     readPressureValueFromDir('wn1_5', 'image/wn1.jpg', 'config/wn1_5.json')
 plot.show()
 # readPressureValueFromDir('image/SF6/IMG_7666.JPG', 'config/otg_1.json')
