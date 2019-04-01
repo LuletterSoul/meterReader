@@ -49,7 +49,7 @@
   "isEnableRebuild": true,
   "searchRadius": 0.7,
   "ptRegAlgType": 1,
-  "matchTemplateType": 2,
+  "matchTemplateType": 1,
   "enableLineThinning": false,
   "realValue": 11.0,
   "res": -1

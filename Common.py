@@ -55,6 +55,8 @@ def meterFinderBySIFT(image, template, info=None):
 
     if is_debugging:
         saver = info['saver']
+        info['imageKeyPointNum'] = len(imageKeyPoint)
+        info['templateKeyPointNum'] = len(templateKeyPoint)
         templateBlurred = cv2.drawKeypoints(templateBlurred, templateKeyPoint, templateBlurred)
         imageBlurred = cv2.drawKeypoints(imageBlurred, imageKeyPoint, imageBlurred)
         saver.saveImg(templateBlurred, 'template_key_points')
@@ -83,6 +85,7 @@ def meterFinderBySIFT(image, template, info=None):
     maxAbnormalNum = 15
     for i in range(len(good)):
         diff = abs(templatePointDistanceMatrix[i] - imagePointDistanceMatrix[i])
+        # print(diff)
         # distance between distance features
         diff.sort()
         distances.append(np.sqrt(np.sum(np.square(diff[:-maxAbnormalNum]))))
@@ -99,6 +102,7 @@ def meterFinderBySIFT(image, template, info=None):
         saver = info['saver']
         matchImage = cv2.drawMatchesKnn(template, templateKeyPoint, image, imageKeyPoint, good2, None, flags=2)
         saver.saveImg(matchImage, 'shift_match')
+        info['averageDistance '] = averageDistance
         # cv2.imshow("matchImage", matchImage)
         # cv2.waitKey(0)
 

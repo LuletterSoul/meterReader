@@ -99,6 +99,7 @@ def read(image, info):
     enhance(src)
     saver.saveImg(src, 'image_by_shift')
     saver.saveImg(denoised, 'denoising')
+    src = denoised
     plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), index=plot.next_idx(), title='Original Image')
     if info['enableGaussianBlur']:
         src = cv2.GaussianBlur(src, (3, 3), sigmaX=0, sigmaY=0, borderType=cv2.BORDER_DEFAULT)
@@ -223,6 +224,7 @@ def load(meter_id, img_dir, config):
         return -1
     assert info is not None
     saver = DataSaver('data/', meter_id)
+    saver.saveImg(img, 'src')
     print("Img: ", meter_id)
     info["template"] = cv2.imread("template/" + meter_id + ".jpg")
     info["saver"] = saver
@@ -243,6 +245,7 @@ def load(meter_id, img_dir, config):
         info['precision'] = str(precision) + '%'
         info['consumption'] = consumption
         print('Precision:{}%'.format(precision))
+        print('Consumption:{}'.format(consumption))
         saver.saveConfig(info)
     print()
     return res
