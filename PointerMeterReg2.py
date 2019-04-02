@@ -215,23 +215,7 @@ def cv2PtrTuple2D(tuple):
     return tuple
 
 
-def shift(meter_id, img_dir, config):
-    img = cv2.imread(img_dir)
-    file = open(config)
-    info = json.load(file)
-    info["template"] = cv2.imread("template/an/" + meter_id + ".jpg")
-    print("Img: ", meter_id)
-    # ROI extract
-    x = info["ROI"]["x"]
-    y = info["ROI"]["y"]
-    w = info["ROI"]["w"]
-    h = info["ROI"]["h"]
-    r = img[y:y + h, x:x + w]
-    roi_dir = 'data/shift/' + meter_id + '_roi' + '.png'
-    cv2.imwrite(roi_dir, r)
-    roi = meterFinderBySIFT(r, info['template'], info)
-    shift_dir = 'data/shift/' + meter_id + '.png'
-    cv2.imwrite(shift_dir, roi)
+
 
 
 def load(meter_id, img_dir, config):

@@ -35,7 +35,7 @@ def meterFinderByTemplate(image, template):
     return image[topLeft[1]:bottomRight[1], topLeft[0]:bottomRight[0]]
 
 
-def meterFinderBySIFT(image, template, info=None):
+def meterFinderBySIFT(image, template, info=None, matchImage=None):
     """
     locate meter's bbox
     :param image: image
@@ -105,6 +105,8 @@ def meterFinderBySIFT(image, template, info=None):
         info['averageDistance '] = averageDistance
         # cv2.imshow("matchImage", matchImage)
         # cv2.waitKey(0)
+    else:
+        matchImage = cv2.drawMatchesKnn(template, templateKeyPoint, image, imageKeyPoint, good2, None, flags=2)
 
     matchPointMatrix = np.array([list(imageKeyPoint[p[0].trainIdx].pt) for p in good2])
 
