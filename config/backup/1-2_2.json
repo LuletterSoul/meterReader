@@ -1,0 +1,56 @@
+{
+  "name": "test",
+  "type": "normalPressure",
+  "ROI": {
+    "x": 988,
+    "y": 380,
+    "w": 678,
+    "h": 604
+  },
+  "startPoint": {
+    "x": 31,
+    "y": 151
+  },
+  "endPoint": {
+    "x": 148,
+    "y": 21
+  },
+  "centerPoint": {
+    "x": 156,
+    "y": 141
+  },
+  "startPointUp": {
+    "x": 0,
+    "y": 0
+  },
+  "endPointUp": {
+    "x": 0,
+    "y": 0
+  },
+  "centerPointUp": {
+    "x": 0,
+    "y": 0
+  },
+  "startValue": 0,
+  "totalValue": 12,
+  "digitType": "False",
+  "result": 0.0,
+  "rasancDst": 20,
+  "contoursThreshold": 100,
+  "kernelSize": 2,
+  "areaThresh": 50,
+  "approxThresh": 15,
+  "enableFitting": true,
+  "lineMatchedCenterDstDiff": 20,
+  "lineMatchedAngleDiff": 2,
+  "rebuildModelDisThreshRatio": 0.10,
+  "rectRationThresh": 40,
+  "enableGaussianBlur": false,
+  "isEnableRebuild": true,
+  "searchRadius": 0.7,
+  "ptRegAlgType": 0,
+  "matchTemplateType": 1,
+  "enableLineThinning": false,
+  "realValue": 11.0,
+  "res": -1
+}

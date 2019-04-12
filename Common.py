@@ -314,6 +314,8 @@ class AngleFactory:
         lenA = np.sqrt(vectorA.dot(vectorA))
         lenB = np.sqrt(vectorB.dot(vectorB))
         cosAngle = vectorA.dot(vectorB) / (lenA * lenB)
+        if abs(cosAngle - 1) <= 10e-4:
+            return np.deg2rad(0)
         # notes that dot product calculates min angle between vectorA and vectorB only.
         angle = np.arccos(cosAngle)
         return angle
@@ -330,6 +332,8 @@ class AngleFactory:
         lenB = np.sqrt(vectorB.dot(vectorB))
         cosAngle = vectorA.dot(vectorB) / (lenA * lenB)
         angle = np.arccos(cosAngle)
+        if abs(cosAngle - 1) <= 10e-4:
+            return np.deg2rad(0)
         return angle
 
     @classmethod
@@ -344,14 +348,14 @@ class AngleFactory:
         vectorA = startPoint - centerPoint
         vectorB = endPoint - centerPoint
         angle = cls.__calAngleBetweenTwoVector(vectorA, vectorB)
-
+        if angle == np.deg2rad(0):
+            return angle
         # if counter-clockwise
         # if cross product(two-dim vector's cross product returns a integer only)
         # is negative ,means the normal vector is oriented down,vectorA is in the clockwise of vectorB
         # otherwise in counterclockwise.
         if np.cross(vectorA, vectorB) < 0:
             angle = 2 * np.pi - angle
-
         return angle
 
     @classmethod
@@ -360,7 +364,8 @@ class AngleFactory:
         get clockwise angle formed by two vector
         """
         angle = cls.__calAngleBetweenTwoVector(vectorA, vectorB)
-
+        if angle == np.deg2rad(0):
+            return angle
         # if counter-clockwise
         # if cross product(two-dim vector's cross product returns a integer only)
         # is negative ,means the normal vector is oriented down,vectorA is in the clockwise of vectorB
@@ -430,6 +435,8 @@ class AngleFactory:
         vectorB = point - centerPoint
 
         angle = cls.__calAngleBetweenTwoVector(vectorA, vectorB)
+        if angle == np.deg2rad(0):
+            return angle
 
         if np.cross(vectorA, vectorB) < 0:
             angle = 2 * np.pi - angle
@@ -585,9 +592,10 @@ def findPointerFromBinarySpace(src, center, radius, radians_low=0, radians_high=
     :return: 被认为是指针区域的白色遮罩(黑色背景)、指针轮廓直线与圆相交的点
     """
     _shape = src.shape
-    img = src.copy()
-    img = cleanShortPart(img, center, _shape, clean_ration)
+    # img = src.copy()
+    # img = cleanShortPart(img, center, _shape, clean_ration)
     # 弧度转化为角度值
+    img = cv2.adaptiveThreshold(src, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 17, 11)
     low = math.degrees(radians_low)
     high = math.degrees(radians_high)
     mask_info = []

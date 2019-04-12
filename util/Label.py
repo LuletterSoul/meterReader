@@ -24,8 +24,32 @@ def setCoordinates():
         config.write(json.dumps(josnc, indent=4))
 
 
+def modifyConfig():
+    #  config_dir = os.path.join('labels', 'an')
+    config_dir = 'config'
+    dirs = os.listdir(config_dir)
+    for d in dirs:
+        filename, extention = os.path.splitext(d)
+        if extention != '.json':
+            continue
+        dir = config_dir + os.path.sep + d
+        print(dir)
+        config = open(dir)
+        josnc = json.load(config)
+        if josnc['type'] == 'normalPressure':
+            config.close()
+            config = open(dir, 'w')
+            josnc['ptRegAlgType'] = 1
+            josnc['matchTemplateType'] = 2
+            # josnc['ptRegAlgType'] = 1
+            josnc['enableFitting'] = True
+            # josnc['enableFitting'] = True
+            config.write(json.dumps(josnc, indent=4))
+
+
 if __name__ == '__main__':
-    setCoordinates()
+    # setCoordinates()
+    modifyConfig()
 
 # if __name__ == '__main__':
 #     img_dir = os.path.join('image', 'anpressure')

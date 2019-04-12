@@ -2,6 +2,8 @@ import time
 import cv2
 import os
 import json
+from openpyxl import *
+import csv
 from DebugSwitcher import is_save
 
 
@@ -40,3 +42,22 @@ class DataSaver:
         if not os.path.exists(save_config_path):
             config = open(save_config_path, "w")
             config.write(json.dumps(info, indent=4))
+
+
+def saveToExcelFromDic(excel_dir, dic_content):
+    wb = load_workbook(excel_dir)
+    str_time = time.strftime('%m%d%H%M%S', time.localtime(time.time()))
+    ws = wb.create_sheet(title=str_time)
+    for content in dic_content:
+        ws.append(list(content.values()))
+    wb.save(excel_dir)
+
+
+# if __name__ == '__main__':
+#     data = [{'meterId': '3-14_1', 'imageKeyPointNum': 3063, 'templateKeyPointNum': 1669, 'realValue': 0.45,
+#              'readingValue': 0.445, 'absError': '0.005 %'},
+#             {'meterId': '3-14_1', 'imageKeyPointNum': 3063, 'templateKeyPointNum': 1669, 'realValue': 0.45,
+#              'readingValue': 0.445, 'absError': '0.005 %'}]
+#     current_path = os.path.dirname(os.path.abspath(__file__)) + os.path.sep
+#     main_dir = os.path.abspath(current_path + "../data")
+#     saveToExcelFromDic(main_dir + '/output.xlsx', data)

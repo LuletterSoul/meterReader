@@ -3,7 +3,7 @@ from DebugSwitcher import is_plot, is_save
 import json
 import util.PlotUtil as plot
 from util import RasancFitCircle as rasan
-from util.StoreUtil import DataSaver
+from util.StoreUtil import DataSaver, saveToExcelFromDic
 import random
 import os
 import time
@@ -91,9 +91,16 @@ def readPressure(image, info):
 
 
 def read(image, info):
-    if info['matchTemplateType'] == 1:
+    matching_alg_type = info['matchTemplateType']
+    if matching_alg_type == 1:
         src = meterFinderBySIFT(image, info["template"], info)
-    else:
+        if src is info['template']:
+            return -1
+    elif matching_alg_type == 2:
+        src = meterFinderBySIFT2(image, info["template"], info)
+        if src is info['template']:
+            return -1
+    elif matching_alg_type == 0:
         src = meterFinderByTemplate(image, info["template"])
     denoised = cv2.fastNlMeansDenoisingColored(src)
     # enhance(src)
@@ -137,6 +144,7 @@ def read(image, info):
         center = np.array([info["centerPoint"]["x"], info["centerPoint"]["y"]])
         start_ptr = np.array([info["startPoint"]["x"], info["startPoint"]["y"]])
         end_ptr = np.array([info["endPoint"]["x"], info["endPoint"]["y"]])
+        radius = EuclideanDistance(center, start_ptr)
     cv2.line(copy_src, (start_ptr[0], start_ptr[1]), (center[0], center[1]), color=(0, 0, 255), thickness=1)
     cv2.line(copy_src, (end_ptr[0], end_ptr[1]), (center[0], center[1]), color=(0, 0, 255), thickness=1)
     cv2.circle(copy_src, (start_ptr[0], start_ptr[1]), 5, (0, 0, 255), -1)
@@ -155,7 +163,7 @@ def read(image, info):
     pt_reg_alg_type = info['ptRegAlgType']
     if pt_reg_alg_type == 0:
         # 从特定范围搜索指针
-        pointer_mask, theta, line_ptr = findPointerFromBinarySpace(thresh, center, radius * info['searchRadius'],
+        pointer_mask, theta, line_ptr = findPointerFromBinarySpace(gray, center, radius * info['searchRadius'],
                                                                    start_radians,
                                                                    end_radians,
                                                                    patch_degree=0.5,
@@ -169,17 +177,18 @@ def read(image, info):
     elif pt_reg_alg_type == 1:
         # value, line_ptr = scanPointer(src, [start_ptr, end_ptr, center], start_value, total)
         value, line_ptr = scanPointer(src, info)
-    cv2.circle(copy_src, (line_ptr[0], line_ptr[1]), 5, (0, 255, 0), cv2.FILLED)
     plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), index=plot.next_idx(), title='Calibration Info')
-    saver.saveImg(copy_src, 'model_center_range')
     if line_ptr[0] == -1:
         return 0
     line_ptr = cv2PtrTuple2D(line_ptr)
+    cv2.circle(copy_src, (line_ptr[0], line_ptr[1]), 5, (0, 255, 0), cv2.FILLED)
+    cv2.line(copy_src, (line_ptr[0], line_ptr[1]), (center[0], center[1]), (0, 255, 0), 2)
+    saver.saveImg(copy_src, 'res')
     value = AngleFactory.calPointerValueByPoint(startPoint=start_ptr, endPoint=end_ptr,
                                                 centerPoint=center,
                                                 point=line_ptr, startValue=start_value,
                                                 totalValue=total)
-    return value
+    return round(value, 3)
 
 
 def calAvgRadius(center, end_ptr, start_ptr):
@@ -215,18 +224,23 @@ def cv2PtrTuple2D(tuple):
     return tuple
 
 
-def load(meter_id, img_dir, config):
+def load(meter_id, template_dir, img_dir, config, stat=None):
     global saver
     img = cv2.imread(img_dir)
     file = open(config)
     info = json.load(file)
-    if info['type'] != 'normalPressure':
+    if img is None or info['type'] != 'normalPressure':
         return -1
     assert info is not None
+    x = info["ROI"]["x"]
+    y = info["ROI"]["y"]
+    w = info["ROI"]["w"]
+    h = info["ROI"]["h"]
+    img = img[y:y + h, x:x + w]
     saver = DataSaver('data/', meter_id)
     saver.saveImg(img, 'src')
     print("Img: ", meter_id)
-    info["template"] = cv2.imread("template/" + meter_id + ".jpg")
+    info["template"] = cv2.imread(template_dir + os.path.sep + meter_id + ".jpg")
     info["saver"] = saver
     start = time.time()
     res = read(img, info)
@@ -238,17 +252,32 @@ def load(meter_id, img_dir, config):
         real_value = info['realValue']
         # calculate absolute error
         abs_error = res - real_value / info['totalValue'] - info['startValue'] * 100
-        abs_error = round(abs_error, 3)
-        if res > 0:
-            ration = (res - real_value) / res * 100
+        abs_error = abs(round(abs_error, 3))
         info['res'] = res
-        info['absError'] = str(abs_error) + ' %'
+        if res == -1:
+            info['absError'] = '100 %'
+        else:
+            info['absError'] = str(abs_error) + ' %'
         info['consumption'] = consumption
         print('Absolute error :{} %'.format(abs_error))
         print('Time consumption:{}'.format(consumption))
+        stat['meterId'] = meter_id
+        buildStat(info, stat)
+        print(stat)
         saver.saveConfig(info)
     print()
     return res
+
+
+def buildStat(info, statistic):
+    statistic['imageKeyPointNum'] = info['imageKeyPointNum']
+    statistic['templateKeyPointNum'] = info['templateKeyPointNum']
+    statistic['realValue'] = info['realValue']
+    statistic['consumption'] = info['consumption']
+    statistic['readingValue'] = info['res']
+    statistic['absError'] = info['absError']
+    statistic['enableFitting'] = info['enableFitting']
+    statistic['ptRegAlgType'] = info['ptRegAlgType']
 
 
 def readPressureValueFromImg(img, info):
@@ -710,18 +739,32 @@ if __name__ == '__main__':
     #     # res6 = readPressureValueFromDir('pressure2_1', 'image/pressure2.jpg', 'config/pressure2_1.json')
     #     # init('pressure2_1', 'image/pressure2.jpg', 'config/pressure2_1.json')
     #     # analysisConnectedComponentsProps('pressure2_1', 'image/pressure2.jpg', 'config/pressure2_1.json')
-    img_main_dir = 'image/pointer'
+    # img_main_dir = 'image/anpressure'
+    # template_main_dir = 'template/an'
+    # config_main_dir = 'labels/an'
+    # data_main_dir = 'data/output.xlsx'
+    img_main_dir = 'image'
+    template_main_dir = 'template'
+    config_main_dir = 'config'
+    data_main_dir = 'data/output.xlsx'
     images = os.listdir(img_main_dir)
-    config = os.listdir("config")
+    config = os.listdir(config_main_dir)
+    stats = []
     for im in images:
+        im = im.lower()
         img_dir = img_main_dir + os.path.sep + im
         for i in range(1, 6):
             meter_id = im.split(".jpg")[0] + "_" + str(i)
-            cfg_dir = meter_id + '.json'
-            if cfg_dir in config:
+            cdir = meter_id + '.json'
+            if cdir in config:
                 start = time.time()
-                load(meter_id, img_dir, 'config/' + cfg_dir)
-                # print("Time consumption: ", end - start)
+                config_dir = config_main_dir + os.path.sep + cdir
+                stat = {}
+                load(meter_id, template_main_dir, img_dir, config_dir, stat)
+                stats.append(stat)
+    saveToExcelFromDic(data_main_dir, stats)
+
+    # print("Time consumption: ", end - start)
 #     # try:
 #     #     # analysisConnectedComponentsProps('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
 #     #     # initExtractScaleLine('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
