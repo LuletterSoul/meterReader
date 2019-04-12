@@ -215,9 +215,6 @@ def cv2PtrTuple2D(tuple):
     return tuple
 
 
-
-
-
 def load(meter_id, img_dir, config):
     global saver
     img = cv2.imread(img_dir)
@@ -564,6 +561,7 @@ def estimateInstrumentModel(src, info, rough_lines=None):
 
 
 def extractRoughScaleLines(src, info):
+    saver.saveImg(src, 'before_cleaning_noise')
     auto_canny = LSF.cleanNotInterestedFeatureByProps(src, area_thresh=info['areaThresh'],
                                                       approx_thresh=info['approxThresh'],
                                                       rect_ration_thresh=info['rectRationThresh'])
@@ -703,27 +701,27 @@ def test_enhancement():
     enhance(src)
 
 
-# if __name__ == '__main__':
-#     # res1 = readPressureValueFromDir('lxd1_4', 'image/lxd1.jpg', 'config/lxd1_4.json')
-#     # res2 = readPressureValueFromDir('szk2_1', 'image/szk2.jpg', 'config/szk2_1.json')
-#     # res3 = readPressureValueFromDir('szk1_5', 'image/szk1.jpg', 'config/szk1_5.json')
-#     # res4 = readPressureValueFromDir('wn1_5', 'image/wn1.jpg', 'config/wn1_5.json')
-#     # res5 = readPressureValueFromDir('xyy3_1', 'image/xyy3.jpg', 'config/xyy3_1.json')
-#     # res6 = readPressureValueFromDir('pressure2_1', 'image/pressure2.jpg', 'config/pressure2_1.json')
-#     # init('pressure2_1', 'image/pressure2.jpg', 'config/pressure2_1.json')
-#     # analysisConnectedComponentsProps('pressure2_1', 'image/pressure2.jpg', 'config/pressure2_1.json')
-#     img_main_dir = 'image/pointer'
-#     images = os.listdir(img_main_dir)
-#     config = os.listdir("config")
-#     for im in images:
-#         img_dir = img_main_dir + os.path.sep + im
-#         for i in range(1, 6):
-#             meter_id = im.split(".jpg")[0] + "_" + str(i)
-#             cfg_dir = meter_id + '.json'
-#             if cfg_dir in config:
-#                 start = time.time()
-#                 load(meter_id, img_dir, 'config/' + cfg_dir)
-#                 # print("Time consumption: ", end - start)
+if __name__ == '__main__':
+    #     # res1 = readPressureValueFromDir('lxd1_4', 'image/lxd1.jpg', 'config/lxd1_4.json')
+    #     # res2 = readPressureValueFromDir('szk2_1', 'image/szk2.jpg', 'config/szk2_1.json')
+    #     # res3 = readPressureValueFromDir('szk1_5', 'image/szk1.jpg', 'config/szk1_5.json')
+    #     # res4 = readPressureValueFromDir('wn1_5', 'image/wn1.jpg', 'config/wn1_5.json')
+    #     # res5 = readPressureValueFromDir('xyy3_1', 'image/xyy3.jpg', 'config/xyy3_1.json')
+    #     # res6 = readPressureValueFromDir('pressure2_1', 'image/pressure2.jpg', 'config/pressure2_1.json')
+    #     # init('pressure2_1', 'image/pressure2.jpg', 'config/pressure2_1.json')
+    #     # analysisConnectedComponentsProps('pressure2_1', 'image/pressure2.jpg', 'config/pressure2_1.json')
+    img_main_dir = 'image/pointer'
+    images = os.listdir(img_main_dir)
+    config = os.listdir("config")
+    for im in images:
+        img_dir = img_main_dir + os.path.sep + im
+        for i in range(1, 6):
+            meter_id = im.split(".jpg")[0] + "_" + str(i)
+            cfg_dir = meter_id + '.json'
+            if cfg_dir in config:
+                start = time.time()
+                load(meter_id, img_dir, 'config/' + cfg_dir)
+                # print("Time consumption: ", end - start)
 #     # try:
 #     #     # analysisConnectedComponentsProps('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
 #     #     # initExtractScaleLine('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
@@ -747,18 +745,3 @@ def test_enhancement():
 #     #  print(res6)
 #     # print(res8)
 #     plot.show(save=True)
-
-
-# test shift
-if __name__ == '__main__':
-    img_main_dir = 'image/anpressure'
-    images = os.listdir(img_main_dir)
-    config = os.listdir("labels/an")
-    for im in images:
-        img_dir = img_main_dir + os.path.sep + im
-        for i in range(1, 6):
-            meter_id = im.split(".JPG")[0] + "_" + str(i)
-            cfg_dir = meter_id + '.json'
-            if cfg_dir in config:
-                start = time.time()
-                shift(meter_id, img_dir, 'labels/an/' + cfg_dir)

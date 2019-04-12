@@ -149,6 +149,8 @@ def inThresholdRange(pts, shape, approx_thresh, area_thresh, rect_ration_thresh)
     approx_in_range = len(approx) < approx_thresh
     # filter long lines which commonly are belong to outer contours
     len_in_range = cv2.arcLength(pts, False) < max(shape[0], shape[1]) * 0.5
+    # return ration_in_range
+    # return ration_in_range  and len_in_range
     return ration_in_range and area_in_range and len_in_range
 
 

@@ -92,7 +92,9 @@ def meterFinderBySIFT(image, template, info=None, matchImage=None):
 
     averageDistance = np.average(distances)
     good2 = [good[i] for i in range(len(good)) if distances[i] < 2 * averageDistance]
-
+    if len(good2) < 3:
+        print('Not found')
+        return template
     # for debug
     # matchImage = cv2.drawMatchesKnn(template, templateKeyPoint, image, imageKeyPoint, good2, None, flags=2)
     # cv2.imshow("matchImage", matchImage)
@@ -121,6 +123,181 @@ def meterFinderBySIFT(image, template, info=None, matchImage=None):
     maxY = int(np.max(matchPointMatrix[:, 1]))
 
     return image[minY:maxY, minX:maxX]
+
+
+def meterFinderBySIFT2(image, template, info=None, matchImage=None):
+    """
+    locate meter's bbox
+    :param image: image
+    :param info: info
+    :return: bbox image
+    """
+    template = info["template"]
+
+    # cv2.imshow("template", template)
+    # cv2.imshow("image", image)
+    # cv2.waitKey(0)
+
+    startPoint = (info["startPoint"]["x"], info["startPoint"]["y"])
+    centerPoint = (info["centerPoint"]["x"], info["centerPoint"]["y"])
+    endPoint = (info["endPoint"]["x"], info["endPoint"]["y"])
+    # startPointUp = (info["startPointUp"]["x"], info["startPointUp"]["y"])
+    # endPointUp = (info["endPointUp"]["x"], info["endPointUp"]["y"])
+    # centerPointUp = (info["centerPointUp"]["x"], info["centerPointUp"]["y"])
+
+    templateBlurred = cv2.GaussianBlur(template, (3, 3), 0)
+    imageBlurred = cv2.GaussianBlur(image, (3, 3), 0)
+
+    sift = cv2.xfeatures2d.SIFT_create()
+
+    # shape of descriptor n * 128, n is the num of key points.
+    # a row of descriptor is the feature of related key point.
+    templateKeyPoint, templateDescriptor = sift.detectAndCompute(templateBlurred, None)
+    imageKeyPoint, imageDescriptor = sift.detectAndCompute(imageBlurred, None)
+
+    if is_debugging and 'saver' in info:
+        saver = info['saver']
+        info['imageKeyPointNum'] = len(imageKeyPoint)
+        info['templateKeyPointNum'] = len(templateKeyPoint)
+        templateBlurred = cv2.drawKeypoints(templateBlurred, templateKeyPoint, templateBlurred)
+        imageBlurred = cv2.drawKeypoints(imageBlurred, imageKeyPoint, imageBlurred)
+        saver.saveImg(templateBlurred, 'template_key_points')
+        saver.saveImg(imageBlurred, 'image_key_points')
+        # cv2.imshow("template", templateBlurred)
+        # cv2.imshow("image", imageBlurred)
+        # cv2.waitKey(0)
+
+    # for debug
+    # templateBlurred = cv2.drawKeypoints(templateBlurred, templateKeyPoint, templateBlurred)
+    # imageBlurred = cv2.drawKeypoints(imageBlurred, imageKeyPoint, imageBlurred)
+    # cv2.imshow("template", templateBlurred)
+    # cv2.imshow("image", imageBlurred)
+
+    # match
+    bf = cv2.BFMatcher()
+    # k = 2, so each match has 2 points. 2 points are sorted by distance.
+    matches = bf.knnMatch(templateDescriptor, imageDescriptor, k=2)
+
+    # The first one is better than the second one
+    good = [[m] for m, n in matches if m.distance < 0.8 * n.distance]
+
+    # distance matrix
+    templatePointMatrix = np.array([list(templateKeyPoint[p[0].queryIdx].pt) for p in good])
+    imagePointMatrix = np.array([list(imageKeyPoint[p[0].trainIdx].pt) for p in good])
+    templatePointDistanceMatrix = pairwise_distances(templatePointMatrix, metric="euclidean")
+    imagePointDistanceMatrix = pairwise_distances(imagePointMatrix, metric="euclidean")
+
+    # del bad match
+    distances = []
+    maxAbnormalNum = 15
+    for i in range(len(good)):
+        diff = abs(templatePointDistanceMatrix[i] - imagePointDistanceMatrix[i])
+        # distance between distance features
+        diff.sort()
+        distances.append(np.sqrt(np.sum(np.square(diff[:-maxAbnormalNum]))))
+
+    averageDistance = np.average(distances)
+    good2 = [good[i] for i in range(len(good)) if distances[i] < 2 * averageDistance]
+    # for debug
+    # matchImage = cv2.drawMatchesKnn(template, templateKeyPoint, image, imageKeyPoint, good2, None, flags=2)
+    # cv2.imshow("matchImage", matchImage)
+    # cv2.waitKey(0)
+    if is_debugging and 'saver' in info:
+        saver = info['saver']
+        matchImage = cv2.drawMatchesKnn(template, templateKeyPoint, image, imageKeyPoint, good2, None, flags=2)
+        saver.saveImg(matchImage, 'shift_match')
+        info['averageDistance '] = averageDistance
+        # cv2.imshow("matchImage", matchImage)
+        # cv2.waitKey(0)
+    else:
+        matchImage = cv2.drawMatchesKnn(template, templateKeyPoint, image, imageKeyPoint, good2, None, flags=2)
+    # not match
+    if len(good2) < 3:
+        print("not found!")
+        return template
+
+    # 寻找转换矩阵 M
+    src_pts = np.float32([templateKeyPoint[m[0].queryIdx].pt for m in good2]).reshape(-1, 1, 2)
+    dst_pts = np.float32([imageKeyPoint[m[0].trainIdx].pt for m in good2]).reshape(-1, 1, 2)
+    M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
+    matchesMask = mask.ravel().tolist()
+    h, w, _ = template.shape
+
+    # 找出匹配到的图形的四个点和标定信息里的所有点
+    pts = np.float32(
+        [[0, 0], [0, h - 1], [w - 1, h - 1], [w - 1, 0], [startPoint[0], startPoint[1]], [endPoint[0], endPoint[1]],
+         [centerPoint[0], centerPoint[1]],
+         # [startPointUp[0], startPointUp[1]],
+         # [endPointUp[0], endPointUp[1]],
+         # [centerPointUp[0], centerPointUp[1]]
+         ]).reshape(-1, 1, 2)
+    dst = cv2.perspectiveTransform(pts, M)
+    if is_debugging and 'saver' in info:
+        tl = dst[0][0]
+        bl = dst[1][0]
+        br = dst[2][0]
+        tr = dst[3][0]
+        image_copy = image.copy()
+        cv2.line(image_copy, (tl[0], tl[1]), (tr[0], tr[1]), (0, 0, 255), 3)
+        cv2.line(image_copy, (tr[0], tr[1]), (br[0], br[1]), (0, 0, 255), 3)
+        cv2.line(image_copy, (br[0], br[1]), (bl[0], bl[1]), (0, 0, 255), 3)
+        cv2.line(image_copy, (bl[0], bl[1]), (tl[0], tl[1]), (0, 0, 255), 3)
+        saver.saveImg(image_copy, 'perspective_rect')
+
+    # 校正图像
+    angle = 0.0
+    vector = (dst[3][0][0] - dst[0][0][0], dst[3][0][1] - dst[0][0][1])
+    cos = (vector[0] * (200.0)) / (200.0 * math.sqrt(vector[0] ** 2 + vector[1] ** 2))
+    if (vector[1] > 0):
+        angle = math.acos(cos) * 180.0 / math.pi
+    else:
+        angle = -math.acos(cos) * 180.0 / math.pi
+    # print(angle)
+
+    change = cv2.getRotationMatrix2D((dst[0][0][0], dst[0][0][1]), angle, 1)
+    src_correct = cv2.warpAffine(image, change, (image.shape[1], image.shape[0]))
+    array = np.array([[0, 0, 1]])
+    newchange = np.vstack((change, array))
+    # 获得校正后的所需要的点
+    newpoints = []
+    for i in range(len(pts)):
+        point = newchange.dot(np.array([dst[i][0][0], dst[i][0][1], 1]))
+        point = list(point)
+        point.pop()
+        newpoints.append(point)
+    src_correct = src_correct[int(round(newpoints[0][1])):int(round(newpoints[1][1])),
+                  int(round(newpoints[0][0])):int(round(newpoints[3][0]))]
+
+    width = src_correct.shape[1]
+    height = src_correct.shape[0]
+    if width == 0 or height == 0:
+        return template
+
+    startPoint = (int(round(newpoints[4][0]) - newpoints[0][0]), int(round(newpoints[4][1]) - newpoints[0][1]))
+    endPoint = (int(round(newpoints[5][0]) - newpoints[0][0]), int(round(newpoints[5][1]) - newpoints[0][1]))
+    centerPoint = (int(round(newpoints[6][0]) - newpoints[0][0]), int(round(newpoints[6][1]) - newpoints[0][1]))
+
+    def isOverflow(point, width, height):
+        if point[0] < 0 or point[1] < 0 or point[0] > width - 1 or point[1] > height - 1:
+            return True
+        return False
+
+    if isOverflow(startPoint, width, height) or isOverflow(endPoint, width, height) or isOverflow(centerPoint, width,
+                                                                                                  height):
+        print("overflow!")
+        return template
+
+    # startPointUp = (int(round(newpoints[7][0]) - newpoints[0][0]), int(round(newpoints[7][1]) - newpoints[0][1]))
+    # endPointUp = (int(round(newpoints[8][0]) - newpoints[0][0]), int(round(newpoints[8][1]) - newpoints[0][1]))
+    # centerPointUp = (int(round(newpoints[9][0]) - newpoints[0][0]), int(round(newpoints[9][1]) - newpoints[0][1]))
+    info["startPoint"]["x"] = startPoint[0]
+    info["startPoint"]["y"] = startPoint[1]
+    info["centerPoint"]["x"] = centerPoint[0]
+    info["centerPoint"]["y"] = centerPoint[1]
+    info["endPoint"]["x"] = endPoint[0]
+    info["endPoint"]["y"] = endPoint[1]
+
+    return src_correct
 
 
 class AngleFactory:
@@ -519,3 +696,42 @@ def detectHoughLine(meter, cannyThresholds, houghParam):
     pointer.append([x2 - x1, y2 - y1])
     pointer = np.array(pointer[0])
     return pointer
+
+
+def noisy(noise_typ, image):
+    if noise_typ == "gauss":
+        row, col, ch = image.shape
+        mean = 0
+        sigma = 10
+        gauss = np.random.normal(mean, sigma, (row, col, ch))
+        gauss = gauss.reshape(row, col, ch)
+        noisy = image + gauss
+        return noisy.astype(np.uint8)
+    elif noise_typ == "s&p":
+        row, col, ch = image.shape
+        s_vs_p = 0.5
+        amount = 0.004
+        out = np.copy(image)
+        # Salt mode
+        num_salt = np.ceil(amount * image.size * s_vs_p)
+        coords = [np.random.randint(0, i - 1, int(num_salt))
+                  for i in image.shape]
+        out[coords] = 1
+
+        # Pepper mode
+        num_pepper = np.ceil(amount * image.size * (1. - s_vs_p))
+        coords = [np.random.randint(0, i - 1, int(num_pepper))
+                  for i in image.shape]
+        out[coords] = 0
+        return out.astype(np.uint8)
+    elif noise_typ == "poisson":
+        vals = len(np.unique(image))
+        vals = 2 ** np.ceil(np.log2(vals))
+        noisy = np.random.poisson(image * vals) / float(vals)
+        return noisy.astype(np.uint8)
+    elif noise_typ == "speckle":
+        row, col, ch = image.shape
+        gauss = np.random.randn(row, col, ch)
+        gauss = gauss.reshape(row, col, ch)
+        noisy = image + image * gauss
+        return noisy.astype(np.uint8)
