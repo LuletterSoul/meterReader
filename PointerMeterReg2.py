@@ -188,7 +188,7 @@ def read(image, info):
                                                 centerPoint=center,
                                                 point=line_ptr, startValue=start_value,
                                                 totalValue=total)
-    return round(value, 3)
+    return round_res(value, 3)
 
 
 def calAvgRadius(center, end_ptr, start_ptr):
@@ -245,14 +245,14 @@ def load(meter_id, template_dir, img_dir, config, stat=None):
     start = time.time()
     res = read(img, info)
     end = time.time()
-    consumption = round(end - start, 3)
+    consumption = round_res(end - start, 3)
     print("Reading Value: ", res)
     if 'realValue' in info:
         print("Real Value:", info['realValue'])
         real_value = info['realValue']
         # calculate absolute error
-        abs_error = res - real_value / info['totalValue'] - info['startValue'] * 100
-        abs_error = abs(round(abs_error, 3))
+        abs_error = (res - real_value) / info['totalValue'] - info['startValue'] * 100
+        abs_error = abs(round_res(abs_error, 3))
         info['res'] = res
         if res == -1:
             info['absError'] = '100 %'

@@ -39,10 +39,10 @@ def modifyConfig():
         if josnc['type'] == 'normalPressure':
             config.close()
             config = open(dir, 'w')
-            josnc['ptRegAlgType'] = 1
+            josnc['ptRegAlgType'] = 0
             josnc['matchTemplateType'] = 2
             # josnc['ptRegAlgType'] = 1
-            josnc['enableFitting'] = True
+            josnc['enableFitting'] = False
             # josnc['enableFitting'] = True
             config.write(json.dumps(josnc, indent=4))
 

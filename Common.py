@@ -3,6 +3,7 @@ import numpy as np
 import math
 from sklearn.metrics.pairwise import pairwise_distances
 from DebugSwitcher import is_debugging
+from decimal import Decimal, ROUND_HALF_UP, ROUND_HALF_EVEN
 
 
 def meterFinderByTemplate(image, template):
@@ -743,3 +744,21 @@ def noisy(noise_typ, image):
         gauss = gauss.reshape(row, col, ch)
         noisy = image + image * gauss
         return noisy.astype(np.uint8)
+
+
+def round_res(res, precision, rounding=None):
+    """
+    rounding res , default format is ROUND_HALF_EVEN
+    :param res:
+    :param precision:
+    :param rounding:
+    :return:
+    """
+    format = '0.'
+    for i in range(precision):
+        format = format + '0'
+    decimal = Decimal(res)
+    if rounding is None:
+        rounding = ROUND_HALF_EVEN
+    quantize = decimal.quantize(Decimal(format), rounding=rounding)
+    return float(quantize)
