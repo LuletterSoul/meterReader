@@ -109,3 +109,6 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+info/20190416/IMAGES/
+info/20190410/IMAGES/
+info/20190128/IMAGES/
