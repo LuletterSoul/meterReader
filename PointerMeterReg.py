@@ -16,7 +16,7 @@ def readPressureValueFromImage(image, info):
     src = cv2.GaussianBlur(src, (3, 3), sigmaX=0, sigmaY=0, borderType=cv2.BORDER_DEFAULT)
     plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), index=plot.next_idx(), title='GaussianBlur')
     src = cv2.fastNlMeansDenoisingColored(src, h=7, templateWindowSize=7, searchWindowSize=21)
-    plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), index=plot.next_idx(), title='Fast denosing')
+    plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), index=plot.next_idx(), title='Fast denoising')
     gray = cv2.cvtColor(src=src, code=cv2.COLOR_BGR2GRAY)
     gray_test = gray.copy()
     gray_test, covex_mask = LSF.filterContex(gray_test)

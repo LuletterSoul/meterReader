@@ -628,7 +628,7 @@ def autoCanny(src, info):
     gray = cv2.fastNlMeansDenoising(gray)
     gray_test = gray.copy()
     kernel_size = info['kernelSize']
-    # plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), index=plot.next_idx(), title='Fast denosing')
+    # plot.subImage(src=cv2.cvtColor(src, cv2.COLOR_BGR2RGB), index=plot.next_idx(), title='Fast denoising')
     # retval, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
     # gray_test, covex_mask = LSF.filterContex(gray_test)
     # Tresh + Gray Convex Masx
