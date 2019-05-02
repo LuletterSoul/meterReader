@@ -35,7 +35,7 @@
     "digitType": "False",
     "result": 0.0,
     "kernelSize": 2,
-    "enableFitting": false,
+    "enableFitting": true,
     "lineMatchedCenterDstDiff": 20,
     "lineMatchedAngleDiff": 2,
     "searchRadius": 0.5,

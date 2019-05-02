@@ -114,6 +114,7 @@ def read(image, info):
     gray = cv2.cvtColor(src=src, code=cv2.COLOR_RGB2GRAY)
     thresh = gray.copy()
     cv2.threshold(gray, 120, 255, cv2.THRESH_BINARY_INV, thresh)
+    saver.saveImg(thresh, "thresh")
     # image thinning
     thresh = cv2.ximgproc.thinning(thresh, thinningType=cv2.ximgproc.THINNING_ZHANGSUEN)
     # find contours
@@ -171,6 +172,7 @@ def read(image, info):
                                                                    clean_ration=clean_ration,
                                                                    avg_len=avg_len)
         if pointer_mask is not None:
+            saver.saveImg(thresh, 'thinning')
             pm = cv2.bitwise_or(thresh, pointer_mask)
             plot.subImage(src=pm, index=plot.next_idx(), title='pointer', cmap='gray')
             saver.saveImg(pm, 'pointer_mast')
@@ -364,12 +366,15 @@ def rebuildScaleLines(auto_canny, model, threshold, start_pt=None, end_pt=None):
     :param end_pt: end point coordinate vector of instrument range
     :return:scale line descriptors
     """
-    debug_src = np.zeros([auto_canny.shape[0], auto_canny.shape[1], 3], dtype=np.uint8)
+    shape = auto_canny.shape
+    debug_src = cv2.bitwise_not(np.zeros([shape[0], shape[1], 3], dtype=np.uint8))
+    # debug_src = np.zeros([auto_canny.shape[0], auto_canny.shape[1], 3], dtype=np.uint8)
     line_src = debug_src.copy()
     detector = cv2.createLineSegmentDetector()
     lines, width, prec, nfa = detector.detect(auto_canny)
     detector.drawSegments(line_src, lines)
     plot.subImage(src=line_src, index=plot.next_idx(), title="All Lines")
+    cv2.circle(line_src, center=(model[0], model[1]), radius=model[2], color=(255, 0, 0), thickness=2)
     saver.saveImg(line_src, 'all_lines')
     descriptors, left_lines_set, right_lines_set, line_avg_len = buildLineDescriptors(lines, model,
                                                                                       threshold)
@@ -379,10 +384,10 @@ def rebuildScaleLines(auto_canny, model, threshold, start_pt=None, end_pt=None):
     if start_pt[0] == -1 and end_pt[0] == -1:
         start_pt, end_pt = setDefaultRange(left_lines_set, right_lines_set)
         # raise Exception("Start and end point not found.")
-    cv2.circle(debug_src, (start_pt[0], start_pt[1]), 5,
-               (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)), 2)
-    cv2.circle(debug_src, (end_pt[0], end_pt[1]), 5,
-               (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)), 2)
+    cv2.circle(debug_src, (start_pt[0], start_pt[1]), 10,
+               (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)), cv2.FILLED)
+    cv2.circle(debug_src, (end_pt[0], end_pt[1]), 10,
+               (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)), cv2.FILLED)
     plot.subImage(src=debug_src, index=plot.next_idx(), title="Rebuild Scale Lines")
     saver.saveImg(debug_src, 'rebuild_scale_lines')
     return lines, start_pt, end_pt
@@ -591,6 +596,13 @@ def estimateInstrumentModel(src, info, rough_lines=None):
 
 def extractRoughScaleLines(src, info):
     saver.saveImg(src, 'before_cleaning_noise')
+    detector = cv2.createLineSegmentDetector()
+    debug_src = cv2.bitwise_not(np.zeros([src.shape[0], src.shape[1], 3], dtype=np.uint8))
+    _lines, width, prec, nfa = detector.detect(src)
+    detector.drawSegments(debug_src, _lines)
+    plot.subImage(src=imutils.opencv2matplotlib(debug_src), index=plot.next_idx(),
+                  title='Line Segments Detected by LSD algorithm')
+    saver.saveImg(debug_src, 'line_segments_before_clean')
     auto_canny = LSF.cleanNotInterestedFeatureByProps(src, area_thresh=info['areaThresh'],
                                                       approx_thresh=info['approxThresh'],
                                                       rect_ration_thresh=info['rectRationThresh'])
@@ -601,18 +613,17 @@ def extractRoughScaleLines(src, info):
         auto_canny = cv2.ximgproc.thinning(auto_canny, thinningType=cv2.ximgproc.THINNING_ZHANGSUEN)
         plot.subImage(src=auto_canny, index=plot.next_idx(), title='Thinning', cmap='gray')
         saver.saveImg(auto_canny, 'thinning_auto_canny')
-    detector = cv2.createLineSegmentDetector()
     # extract all lines contours using LSD algorithm
     _lines, width, prec, nfa = detector.detect(auto_canny)
     # only consider the points in image range
     # _lines = np.array(
     #    [_line for _line in _lines if _line[0][0] > 0 and _line[0][1] and _line[0][2] > 0 and _line[0][3] > 0])
-    debug_src = np.zeros([src.shape[0], src.shape[1], 3], dtype=np.uint8)
+    debug_src = cv2.bitwise_not(np.zeros([src.shape[0], src.shape[1], 3], dtype=np.uint8))
     detector.drawSegments(debug_src, _lines)
     plot.subImage(src=imutils.opencv2matplotlib(debug_src), index=plot.next_idx(),
                   title='Line Segments Detected by LSD algorithm')
     saver.saveImg(debug_src, 'line_segments_detected_by_LSD')
-    debug_src = np.zeros([src.shape[0], src.shape[1], 3], dtype=np.uint8)
+    debug_src = cv2.bitwise_not(np.zeros([src.shape[0], src.shape[1], 3], dtype=np.uint8))
     # detector.drawSegments(line_src, _lines)
     # double match lines in accordance with the LSD functionality
     # which splits a linear contour to two thin line
@@ -652,7 +663,7 @@ def autoCanny(src, info):
 def fitCenter(lines, shape, dst_thresh):
     detector = cv2.createLineSegmentDetector()
     # debug image
-    debug_src = np.zeros([shape[0], shape[1], 3], dtype=np.uint8)
+    debug_src = cv2.bitwise_not(np.zeros([shape[0], shape[1], 3], dtype=np.uint8))
     detector.drawSegments(debug_src, lines)
     dst_thresh = min(shape[0], shape[1]) * 0.01
     # print("Ransac Thresh", dst_thresh)
@@ -672,12 +683,13 @@ def fitCenter(lines, shape, dst_thresh):
         # display inliers points and lines with center
         if list_bisection_search(inliers_idx, idx, 0) != -1:
             cv2.circle(debug_src, (np.int32(c[0]), np.int32(c[1])), 3, (0, 255, 0), cv2.FILLED)
-            cv2.line(debug_src, (best_circle[0], best_circle[1]), (c[0], c[1]), color=(255, 0, 0), thickness=1)
+            # cv2.line(debug_src, (best_circle[0], best_circle[1]), (c[0], c[1]), color=(255, 0, 0), thickness=1)
         # display outlier points
         else:
-            cv2.circle(debug_src, (np.int32(c[0]), np.int32(c[1])), 3, (255, 255, 255), cv2.FILLED)
+            cv2.circle(debug_src, (np.int32(c[0]), np.int32(c[1])), 3, (0, 0, 0), cv2.FILLED)
     # display model center
     cv2.circle(debug_src, (best_circle[0], best_circle[1]), 10, color=(0, 0, 255), thickness=cv2.FILLED)
+    cv2.circle(debug_src, (best_circle[0], best_circle[1]), best_circle[2], color=(255, 0, 0), thickness=2)
     plot.subImage(src=imutils.opencv2matplotlib(debug_src), index=plot.next_idx(), title='Fitting Circle Model')
     saver.saveImg(debug_src, 'fitting_circle')
     return best_circle, line_centers, inliers_idx
@@ -788,3 +800,6 @@ if __name__ == '__main__':
 #     #  print(res6)
 #     # print(res8)
 #     plot.show(save=True)
+
+
+

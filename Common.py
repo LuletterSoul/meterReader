@@ -4,6 +4,7 @@ import math
 from sklearn.metrics.pairwise import pairwise_distances
 from DebugSwitcher import is_debugging
 from decimal import Decimal, ROUND_HALF_UP, ROUND_HALF_EVEN
+import os
 
 
 def meterFinderByTemplate(image, template):
@@ -762,3 +763,73 @@ def round_res(res, precision, rounding=None):
         rounding = ROUND_HALF_EVEN
     quantize = decimal.quantize(Decimal(format), rounding=rounding)
     return float(quantize)
+
+
+def enhance(src, meter_id, out_main_dir):
+    gray = cv2.cvtColor(src, cv2.COLOR_RGB2GRAY)
+    save_dir = out_main_dir + os.path.sep + meter_id + '_0_gray' + '.png'
+    cv2.imwrite(save_dir, gray)
+    normalize = np.zeros(gray.shape)
+    cv2.normalize(gray, normalize, 0, 1, cv2.NORM_MINMAX)
+    # plot.subImage(src=normalize, index=plot.next_idx(), title='Gray', cmap='gray')
+    # plot.subImage(src=gray, index=plot.next_idx(), title='Gray', cmap='gray')
+    laplace_kernel = np.array([[-1, -1, -1], [-1, 8, -1], [-1, -1, -1]])
+    laplace = cv2.filter2D(gray, cv2.CV_8UC1, laplace_kernel)
+    # laplace = cv2.Laplacian(gray, cv2.CV_8UC1, ksize=3)
+    save_dir = out_main_dir + os.path.sep + meter_id + '_1_enhance_laplace' + '.png'
+    cv2.imwrite(save_dir, laplace)
+    # abs_labplace = cv2.convertScaleAbs(laplace)
+    # plot.subImage(src=abs_labplace, index=plot.next_idx(), title='Laplace', cmap='gray')
+    # cv2.normalize(abs_labplace, abs_labplace)
+    overlay = cv2.add(gray, laplace)
+    save_dir = out_main_dir + os.path.sep + meter_id + '_2_overlay' + '.png'
+    cv2.imwrite(save_dir, overlay)
+    # plot.subImage(src=overlay, index=plot.next_idx(), title='Overlay by Gray + Laplace', cmap='gray')
+    sobel_x = cv2.convertScaleAbs(cv2.Sobel(gray, cv2.CV_8U, 1, 0, ksize=3))
+    sobel_y = cv2.convertScaleAbs(cv2.Sobel(gray, cv2.CV_8U, 0, 1, ksize=3))
+    grad = cv2.convertScaleAbs(cv2.add(sobel_x, sobel_y))
+    save_dir = out_main_dir + os.path.sep + meter_id + '_3_grad_' + '.png'
+    cv2.imwrite(save_dir, grad)
+    # cv2.normalize(grad, grad, 1.0, 0.0, cv2.NORM_MINMAX)
+    # plot.subImage(src=grad, index=plot.next_idx(), title='Grad', cmap='gray')
+    # media_blur = cv2.medianBlur(grad, 5)
+    save_dir = out_main_dir + os.path.sep + meter_id + '_4_grad_blurred' + '.png'
+    mean_blur = cv2.blur(gray, (5, 5))
+    sobel_x = cv2.convertScaleAbs(cv2.Sobel(mean_blur, cv2.CV_8U, 1, 0, ksize=3))
+    sobel_y = cv2.convertScaleAbs(cv2.Sobel(mean_blur, cv2.CV_8U, 0, 1, ksize=3))
+    blur_grad = cv2.convertScaleAbs(cv2.add(sobel_x, sobel_y))
+    cv2.imwrite(save_dir, blur_grad)
+    # cv2.normalize(grad, grad, 1.0, 0.0, cv2.NORM_MINMAX)
+    # plot.subImage(src=grad, index=plot.next_idx(), title='Grad', cmap='gray')
+    # media_blur = cv2.medianBlur(grad, 5)
+    # media_blur = np.float32(media_blur) * (1 / 255)
+    # overlay = np.float32(overlay) * (1 / 255)
+    # plot.subImage(src=abs_labplace, index=plot.next_idx(), title='Media Blurred', cmap='gray')
+    mask = cv2.bitwise_and(blur_grad, overlay)
+    # mask = (mask > 1) * 255
+    # np.where(mask >= 1, 255, 0)
+    #  print(mask)
+    save_dir = out_main_dir + os.path.sep + meter_id + '_4_sharp_mask' + '.png'
+    cv2.imwrite(save_dir, mask)
+    # plot.subImage(src=abs_labplace, index=plot.next_idx(), title='Mask', cmap='gray')
+    enhance = cv2.add(gray, mask)
+    save_dir = out_main_dir + os.path.sep + meter_id + '_5_enhanced' + '.png'
+    cv2.imwrite(save_dir, enhance)
+    # plot.subImage(src=enhance, index=plot.next_idx(), title='Enhance', cmap='gray')
+    return cv2.cvtColor(enhance, cv2.COLOR_GRAY2BGR)
+    cv2.imwrite(save_dir, media_blur)
+    # media_blur = np.float32(media_blur) * (1 / 255)
+    # overlay = np.float32(overlay) * (1 / 255)
+    # plot.subImage(src=abs_labplace, index=plot.next_idx(), title='Media Blurred', cmap='gray')
+    mask = cv2.bitwise_and(media_blur, overlay)
+    # mask = (mask > 1) * 255
+    # np.where(mask >= 1, 255, 0)
+    #  print(mask)
+    save_dir = out_main_dir + os.path.sep + meter_id + '_4_sharp_mask' + '.png'
+    cv2.imwrite(save_dir, mask)
+    # plot.subImage(src=abs_labplace, index=plot.next_idx(), title='Mask', cmap='gray')
+    enhance = cv2.add(gray, mask)
+    save_dir = out_main_dir + os.path.sep + meter_id + '_5_enhanced' + '.png'
+    cv2.imwrite(save_dir, enhance)
+    # plot.subImage(src=enhance, index=plot.next_idx(), title='Enhance', cmap='gray')
+    return cv2.cvtColor(enhance, cv2.COLOR_GRAY2BGR)

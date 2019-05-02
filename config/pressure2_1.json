@@ -28,7 +28,7 @@
     "enableFit": false,
     "enableEqualizeHistogram": false,
     "enableCleanNoisedRegion": true,
-    "ptrResolution": 50,
+    "ptrResolution": 20,
     "noisedRegion": [
         [
             247,
@@ -39,7 +39,7 @@
     ],
     "rasancDst": 20,
     "contoursThreshold": 100,
-    "enableFitting": false,
+    "enableFitting": true,
     "areaThresh": 200,
     "approxThresh": 8,
     "kernelSize": 3,

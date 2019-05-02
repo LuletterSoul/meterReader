@@ -42,7 +42,7 @@ def modifyConfig():
             josnc['ptRegAlgType'] = 0
             josnc['matchTemplateType'] = 2
             # josnc['ptRegAlgType'] = 1
-            josnc['enableFitting'] = False
+            josnc['enableFitting'] = True
             # josnc['enableFitting'] = True
             config.write(json.dumps(josnc, indent=4))
 

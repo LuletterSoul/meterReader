@@ -40,7 +40,7 @@
     "kernelSize": 2,
     "areaThresh": 50,
     "approxThresh": 15,
-    "enableFitting": false,
+    "enableFitting": true,
     "lineMatchedCenterDstDiff": 20,
     "lineMatchedAngleDiff": 2,
     "rebuildModelDisThreshRatio": 0.1,
