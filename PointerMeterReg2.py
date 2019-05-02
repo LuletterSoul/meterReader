@@ -443,7 +443,7 @@ def buildLineDescriptors(lines, model, threshold):
         end = np.array([l[2], l[3]])
         # distance between scale line intersection pt and model center.
         insec_with_model = LU.getDistPtToLine(model_center, start, end) < threshold
-        # distance between scale line center and circle model margin.
+        # distance between scale line center and circle model margifixed absolute error calculation issue.n.
         center_in_model = np.abs(EuclideanDistance(model_center, line_center) - model[2]) < threshold
         line_len = EuclideanDistance(start, end)
         # line thresh for filtering len line ,which don't belong to scale line obviously
@@ -675,9 +675,9 @@ def fitCenter(lines, shape, dst_thresh):
                                                                         max_iterations=200,
                                                                         optimal_consensus_num=optimal,
                                                                         dst_threshold=dst_thresh)
-    best_circle = np.int32(best_circle)
     if best_circle[0] == -1:
         return best_circle, [], []
+    best_circle = np.int32(best_circle)
     for idx, c in enumerate(line_centers):
         c = np.int32(c)
         # display inliers points and lines with center

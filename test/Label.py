@@ -41,6 +41,7 @@ def modifyConfig():
             config = open(dir, 'w')
             josnc['ptRegAlgType'] = 0
             josnc['matchTemplateType'] = 2
+            josnc['enableLineThinning'] = False
             # josnc['ptRegAlgType'] = 1
             josnc['enableFitting'] = True
             # josnc['enableFitting'] = True

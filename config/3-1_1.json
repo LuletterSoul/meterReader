@@ -1,56 +1,58 @@
 {
-    "name": "3-1",
+    "distance": 10.0,
+    "horizontal": 10.0,
+    "vertical": 20.0,
+    "name": "pressure2_1",
     "type": "normalPressure",
     "ROI": {
-        "x": 442,
-        "y": 841,
-        "w": 566,
-        "h": 462
+        "x": 0,
+        "y": 0,
+        "w": 1920,
+        "h": 1280
     },
     "startPoint": {
-        "x": 237,
-        "y": 772
+        "x": 211,
+        "y": 620
     },
     "endPoint": {
-        "x": 772,
-        "y": 776
+        "x": 584,
+        "y": 618
     },
     "centerPoint": {
-        "x": 503,
-        "y": 521
+        "x": 406,
+        "y": 446
     },
-    "startPointUp": {
-        "x": 0,
-        "y": 0
-    },
-    "endPointUp": {
-        "x": 0,
-        "y": 0
-    },
-    "centerPointUp": {
-        "x": 0,
-        "y": 0
-    },
-    "startValue": 0,
-    "totalValue": 1,
-    "digitType": "False",
-    "result": 0.0,
+    "startValue": 0.0,
+    "totalValue": 2.5,
+    "unit": "Mpa",
+    "enableFit": false,
+    "enableEqualizeHistogram": false,
+    "enableCleanNoisedRegion": true,
+    "ptrResolution": 20,
+    "noisedRegion": [
+        [
+            247,
+            417,
+            117,
+            62
+        ]
+    ],
     "rasancDst": 20,
-    "kernelSize": 2,
     "contoursThreshold": 100,
-    "areaThresh": 50,
-    "approxThresh": 15,
     "enableFitting": true,
+    "areaThresh": 200,
+    "approxThresh": 8,
+    "kernelSize": 3,
+    "rectRationThresh": 30,
     "lineMatchedCenterDstDiff": 20,
     "lineMatchedAngleDiff": 2,
-    "rebuildModelDisThreshRatio": 0.1,
-    "rectRationThresh": 40,
-    "enableGaussianBlur": false,
+    "enableGaussianBlur": true,
+    "rebuildModelDisThreshRatio": 0.02,
     "isEnableRebuild": true,
     "searchRadius": 0.7,
     "ptRegAlgType": 0,
     "matchTemplateType": 2,
     "enableLineThinning": false,
-    "realValue": 0.45,
+    "realValue": 1.51,
     "res": -1
 }

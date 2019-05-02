@@ -1,56 +1,27 @@
 {
-    "name": "test",
-    "type": "normalPressure",
-    "ROI": {
-        "x": 354,
-        "y": 384,
-        "w": 662,
-        "h": 582
-    },
-    "startPoint": {
-        "x": 23,
-        "y": 149
-    },
-    "endPoint": {
-        "x": 148,
-        "y": 35
-    },
-    "centerPoint": {
-        "x": 147,
-        "y": 150
-    },
-    "startPointUp": {
-        "x": 0,
-        "y": 0
-    },
-    "endPointUp": {
-        "x": 0,
-        "y": 0
-    },
-    "centerPointUp": {
-        "x": 0,
-        "y": 0
-    },
-    "startValue": 0,
-    "totalValue": 12,
-    "digitType": "False",
-    "result": 0.0,
-    "rasancDst": 20,
-    "kernelSize": 2,
-    "contoursThreshold": 100,
-    "areaThresh": 50,
-    "approxThresh": 15,
-    "enableFitting": true,
-    "lineMatchedCenterDstDiff": 20,
-    "lineMatchedAngleDiff": 2,
-    "rebuildModelDisThreshRatio": 0.1,
-    "rectRationThresh": 40,
-    "enableGaussianBlur": false,
-    "isEnableRebuild": true,
-    "searchRadius": 0.7,
-    "ptRegAlgType": 0,
-    "matchTemplateType": 2,
-    "enableLineThinning": false,
-    "realValue": 11.0,
-    "res": -1
+  "distance": 10.0,
+  "horizontal": 10.0,
+  "vertical": 20.0,
+  "name": "lxd1_1",
+  "type": "countArrester",
+  "ROI": {
+    "x": 840,
+    "y": 168,
+    "w": 284,
+    "h": 305
+  },
+  "startPoint": {
+    "x": 129,
+    "y": 42
+  },
+  "endPoint": {
+    "x": 129,
+    "y": 42
+  },
+  "centerPoint": {
+    "x": 145,
+    "y": 152
+  },
+  "startValue": 0,
+  "totalValue": 10
 }
