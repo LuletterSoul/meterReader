@@ -1,3 +1,3 @@
 is_plot = False
-is_debugging = True
-is_save = True
+is_debugging = False
+is_save = False

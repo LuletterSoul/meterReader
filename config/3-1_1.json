@@ -39,7 +39,7 @@
     ],
     "rasancDst": 20,
     "contoursThreshold": 100,
-    "enableFitting": true,
+    "enableFitting": false,
     "areaThresh": 200,
     "approxThresh": 8,
     "kernelSize": 3,

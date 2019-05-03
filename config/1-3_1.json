@@ -11,16 +11,16 @@
         "h": 530
     },
     "startPoint": {
-        "x": 207,
-        "y": 300
+        "x": 47,
+        "y": 147
     },
     "endPoint": {
-        "x": 241,
-        "y": 80
+        "x": 147,
+        "y": 35
     },
     "centerPoint": {
-        "x": 339,
-        "y": 212
+        "x": 151,
+        "y": 142
     },
     "rasancDst": 20,
     "startValue": 0.0,
@@ -31,9 +31,11 @@
     "rebuildModelDisThreshRatio": 0.1,
     "rectRationThresh": 30,
     "enableGaussianBlur": false,
-    "isEnableRebuild": false,
+    "isEnableRebuild": true,
+    "digitType": "False",
+    "result": 0.0,
     "kernelSize": 2,
-    "enableFitting": true,
+    "enableFitting": false,
     "lineMatchedCenterDstDiff": 20,
     "lineMatchedAngleDiff": 2,
     "searchRadius": 0.5,

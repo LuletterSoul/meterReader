@@ -249,16 +249,24 @@ def load(meter_id, template_dir, img_dir, config, stat=None):
     end = time.time()
     consumption = round_res(end - start, 3)
     print("Reading Value: ", res)
+    relative_error = 0
     if 'realValue' in info:
         print("Real Value:", info['realValue'])
         real_value = info['realValue']
         # calculate absolute error
-        abs_error = (res - real_value) / info['totalValue'] - info['startValue'] * 100
+        abs_error = (res - real_value) / (info['totalValue'] - info['startValue']) * 100
+        if real_value != 0:
+            relative_error = (res - real_value) / real_value * 100
+        else:
+            relative_error = 100
         abs_error = abs(round_res(abs_error, 3))
+        relative_error = abs(round_res(relative_error, 3))
         info['res'] = res
         if res == -1:
+            info['relativeError'] = '100 %'
             info['absError'] = '100 %'
         else:
+            info['relativeError'] = str(relative_error) + ' %'
             info['absError'] = str(abs_error) + ' %'
         info['consumption'] = consumption
         print('Absolute error :{} %'.format(abs_error))
@@ -275,10 +283,11 @@ def buildStat(info, statistic):
     statistic['imageKeyPointNum'] = info['imageKeyPointNum']
     statistic['templateKeyPointNum'] = info['templateKeyPointNum']
     statistic['realValue'] = info['realValue']
-    statistic['consumption'] = info['consumption']
     statistic['readingValue'] = info['res']
     statistic['absError'] = info['absError']
+    statistic['relativeError'] = info['relativeError']
     statistic['enableFitting'] = info['enableFitting']
+    statistic['consumption'] = info['consumption']
     statistic['ptRegAlgType'] = info['ptRegAlgType']
 
 
@@ -560,7 +569,7 @@ def estimateInstrumentModel(src, info, rough_lines=None):
     # src = meterFinderByTemplate(image, info["template"])
     auto_canny = autoCanny(src, info)
     rough_lines = extractRoughScaleLines(auto_canny, info)
-    model, line_centers, inliers_idx = fitCenter(rough_lines, info['template'].shape, info['rasancDst'])
+    model, line_centers, inliers_idx = fitCenter(rough_lines, src.shape, info['rasancDst'])
     if model[0] == -1:
         return model, [-1, -1], [-1, -1], None, -1
     center = [model[0], model[1]]
@@ -756,6 +765,10 @@ if __name__ == '__main__':
     # config_main_dir = 'labels/an'
     # data_main_dir = 'data/output.xlsx'
     img_main_dir = 'image'
+    # img_main_dir = 'image/4'
+    # img_main_dir = 'image/2'
+    # img_main_dir = 'image/3'
+    # img_main_dir = 'image/4'
     template_main_dir = 'template'
     config_main_dir = 'config'
     data_main_dir = 'data/output.xlsx'
@@ -772,8 +785,8 @@ if __name__ == '__main__':
                 start = time.time()
                 config_dir = config_main_dir + os.path.sep + cdir
                 stat = {}
-                load(meter_id, template_main_dir, img_dir, config_dir, stat)
-                stats.append(stat)
+                if -1 != load(meter_id, template_main_dir, img_dir, config_dir, stat):
+                    stats.append(stat)
     saveToExcelFromDic(data_main_dir, stats)
 
     # print("Time consumption: ", end - start)
@@ -800,6 +813,3 @@ if __name__ == '__main__':
 #     #  print(res6)
 #     # print(res8)
 #     plot.show(save=True)
-
-
-

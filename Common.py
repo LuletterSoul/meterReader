@@ -159,8 +159,6 @@ def meterFinderBySIFT2(image, template, info=None, matchImage=None):
 
     if is_debugging and 'saver' in info:
         saver = info['saver']
-        info['imageKeyPointNum'] = len(imageKeyPoint)
-        info['templateKeyPointNum'] = len(templateKeyPoint)
         templateBlurred = cv2.drawKeypoints(templateBlurred, templateKeyPoint, templateBlurred)
         imageBlurred = cv2.drawKeypoints(imageBlurred, imageKeyPoint, imageBlurred)
         saver.saveImg(templateBlurred, 'template_key_points')
@@ -168,6 +166,8 @@ def meterFinderBySIFT2(image, template, info=None, matchImage=None):
         # cv2.imshow("template", templateBlurred)
         # cv2.imshow("image", imageBlurred)
         # cv2.waitKey(0)
+    info['imageKeyPointNum'] = len(imageKeyPoint)
+    info['templateKeyPointNum'] = len(templateKeyPoint)
 
     # for debug
     # templateBlurred = cv2.drawKeypoints(templateBlurred, templateKeyPoint, templateBlurred)

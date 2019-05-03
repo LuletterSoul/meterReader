@@ -28,7 +28,7 @@
     "contoursThreshold": 100,
     "areaThresh": 80,
     "approxThresh": 15,
-    "enableFitting": true,
+    "enableFitting": false,
     "lineMatchedCenterDstDiff": 20,
     "lineMatchedAngleDiff": 5,
     "rebuildModelDisThreshRatio": 0.1,
