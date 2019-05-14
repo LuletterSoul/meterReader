@@ -24,6 +24,35 @@ def setCoordinates():
         config.write(json.dumps(josnc, indent=4))
 
 
+def formatConfig(config_dir, template_dir, template_output_dir, src_output_dir):
+    dirs = os.listdir(config_dir)
+    for d in dirs:
+        template_cfg = open(template_dir)
+        # 按模板配置新建一个json对象
+        template_json = json.load(template_cfg)
+        filename, extention = os.path.splitext(d)
+        if extention != '.json':
+            continue
+        src_dir = config_dir + os.path.sep + d
+        print('Processing: ', src_dir)
+        # 源配置
+        sir_cfg = open(src_dir)
+        src_json = json.load(sir_cfg)
+        # 先读模板，按照模板键值出现的顺序进行格式化
+        for key in template_json:
+            # 如果源配置的键值在模板中，将对应的值保存
+            if key in src_json:
+                template_cfg.key = src_json.key
+            # 如果不在，将不存在的键值保存在源配置中
+            else:
+                src_json.key = template_json.key
+        src_output = open(src_output_dir, 'w')
+        template_output = open(template_output_dir, 'w')
+        # 保存到指定目录
+        src_output.write(json.dumps(src_json, indent=4))  # indent =4  保留json格式
+        template_output.write(json.dumps(template_json, indent=4))
+
+
 def modifyConfig():
     #  config_dir = os.path.join('labels', 'an')
     config_dir = 'config'
