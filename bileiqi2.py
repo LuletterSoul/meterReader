@@ -1,5 +1,5 @@
 import cv2
-from Common import AngleFactory,meterFinderByTemplate
+from server.server.ins.Common import AngleFactory,meterFinderByTemplate
 from num_reading import get_value
 import math
 def bileiqi2(image, info):

@@ -1,6 +1,6 @@
-from Common import *
-from LineUtils import getCrossPoint, getDistPtToLine
-
+from ..Common import *
+# from .line.LineUtils import getCrossPoint, getDistPtToLine
+from ..line.LineUtils import getCrossPoint,getDistPtToLine
 thresh1 = 20
 thresh2 = 25
 thresh3 = 10

@@ -15,6 +15,27 @@ import os
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+PARENT_DIR = os.path.dirname(BASE_DIR)
+
+IMAGE_REL_DIR = '././image'
+TEMPLATE_REL_DIR = '././template'
+CONFIG_REL_DIR = '././config'
+PROC_REL_DIR = 'data'
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+
+IMAGE_DIR = os.path.join(MEDIA_ROOT, 'image')
+TEMPLATE_DIR = os.path.join(MEDIA_ROOT, 'template')
+CONFIG_DIR = os.path.join(MEDIA_ROOT, 'config')
+PROC_DIR = os.path.join(MEDIA_ROOT, 'data')
+PROC_MAIN_DIR = 'data'
+
+APPEND_SLASH = False
+# print(TEMPLATE_DIR)
+# print(CONFIG_DIR)
+# print(BASE_DIR)
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
 
@@ -35,7 +56,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rest_framework'
+    'rest_framework',
+    # 'django_filters',
+    'server.ins'
 ]
 
 MIDDLEWARE = [
@@ -71,12 +94,12 @@ WSGI_APPLICATION = 'server.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-    }
-}
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+#     }
+# }
 
 DATABASES = {
     'default': {

@@ -1,6 +1,6 @@
-from Common import *
+from server.server.ins.Common import *
 import json
-import util.PlotUtil as plot
+import server.server.ins.util.PlotUtil as plot
 
 plot_index = 0
 

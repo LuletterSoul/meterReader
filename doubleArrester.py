@@ -1,5 +1,4 @@
-from Common import scanPointer, meterFinderBySIFT, meterFinderByTemplate
-import cv2
+from server.server.ins.Common import scanPointer, meterFinderByTemplate
 import numpy as np
 
 

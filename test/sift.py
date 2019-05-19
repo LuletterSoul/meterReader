@@ -1,8 +1,8 @@
-from Common import *
+from server.server.ins.Common import *
 import json
 import os
 import time
-from util.StoreUtil import DataSaver
+from server.server.ins.util.StoreUtil import DataSaver
 
 
 def shift(meter_id, img_dir, template_dir, output_dir, config):

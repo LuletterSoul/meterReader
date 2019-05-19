@@ -1,5 +1,4 @@
-import cv2
-from Common import *
+from server.server.ins.Common import *
 import numpy as np
 
 

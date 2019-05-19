@@ -1,4 +1,4 @@
-from Common import *
+from server.server.ins.Common import *
 import numpy as np
 import functools
 import json

@@ -16,11 +16,18 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework import routers
-from server.start.views import ResViewSet
+from django.conf import settings
+from django.conf.urls.static import static
+# from api import views
+from .ins.views import *
 
 router = routers.DefaultRouter()
 router.register(r'results', ResViewSet)
+router.register(r'src', UploadImageSrcView)
+router.register(r'templates', UploadTemplateView)
+router.register(r'configs', UploadConfigView)
+router.register(r'proc', ProcView)
 urlpatterns = [
-    path('api/', include(router.urls)),
+    path('ins/', include(router.urls)),
     path('admin/', admin.site.urls),
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

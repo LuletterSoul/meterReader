@@ -2,8 +2,8 @@ import cv2
 import numpy as np
 import math
 from sklearn.metrics.pairwise import pairwise_distances
-from DebugSwitcher import is_debugging
-from decimal import Decimal, ROUND_HALF_UP, ROUND_HALF_EVEN
+from .DebugSwitcher import is_debugging
+from decimal import Decimal, ROUND_HALF_EVEN
 import os
 
 

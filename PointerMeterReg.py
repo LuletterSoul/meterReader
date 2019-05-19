@@ -1,8 +1,8 @@
 import json
-from Common import *
+from server.server.ins.Common import *
 from LocalRegionSearch import *
-import util.PlotUtil as plot
-import LineSegmentFilter as LSF
+import server.server.ins.util.PlotUtil as plot
+from server.server.ins.line import LineSegmentFilter as LSF
 import imutils
 
 

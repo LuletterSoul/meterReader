@@ -1,4 +1,4 @@
-from Common import *
+from server.server.ins.Common import *
 
 ifshow = False
 

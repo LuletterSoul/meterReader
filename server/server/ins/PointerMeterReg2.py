@@ -1,13 +1,19 @@
-from server.server.ins.Common import *
+from .Common import *
 import json
-import server.server.ins.util.PlotUtil as plot
-from server.server.ins.util import RasancFitCircle as rasan
-from server.server.ins.util.StoreUtil import DataSaver, saveToExcelFromDic
+from .util import PlotUtil as plot
+from .util import RasancFitCircle as rasan
+# from server.server.ins.util import RasancFitCircle as rasan
+from .util.StoreUtil import DataSaver, saveToExcelFromDic
+from ..settings import PROC_REL_DIR
+# from server.server.ins.util.StoreUtil import DataSaver, saveToExcelFromDic
 import random
-import os
 import time
 import imutils
-from server.server.ins.line import LineSegmentFilter as LSF, LineUtils as LU
+from django.core.files import File
+# from server.server.ins import LineSegmentFilter as LSF, LineUtils as LU
+
+from .line import LineSegmentFilter as LSF, LineUtils as LU
+from .models import *
 
 saver = DataSaver()
 
@@ -223,11 +229,11 @@ def cv2PtrTuple2D(tuple):
     return tuple
 
 
-def load(meter_id, template_dir, img_dir, config, stat=None):
+def load(src_id, meter_id, template, img_dir, config, data_dir, stat=None):
     global saver
     img = cv2.imread(img_dir)
-    file = open(config)
-    info = json.load(file)
+    # file = open(config)
+    info = json.load(config)
     if img is None or info['type'] != 'normalPressure':
         return -1
     assert info is not None
@@ -236,10 +242,11 @@ def load(meter_id, template_dir, img_dir, config, stat=None):
     w = info["ROI"]["w"]
     h = info["ROI"]["h"]
     img = img[y:y + h, x:x + w]
-    saver = DataSaver('data/', meter_id)
+    saver = DataSaver(data_dir, meter_id)
     saver.saveImg(img, 'src')
     print("Img: ", meter_id)
-    info["template"] = cv2.imread(template_dir + os.path.sep + meter_id + ".jpg")
+    # info["template"] = cv2.imread(template_dir + os.path.sep + meter_id + ".jpg")
+    info["template"] = template
     info["saver"] = saver
     start = time.time()
     res = read(img, info)
@@ -270,10 +277,27 @@ def load(meter_id, template_dir, img_dir, config, stat=None):
         print('Time consumption:{}'.format(consumption))
         stat['meterId'] = meter_id
         buildStat(info, stat)
+        data_save_path = saver.save_path
+        proc_dirs = os.listdir(data_save_path)
+        # template =
+        result = RegResult(value=res, realValue=real_value, absoluteError=abs_error, timeConsumption=consumption,
+                           srcId=src_id)
+        result.save()
+        for proc in proc_dirs:
+            filename, extention = os.path.splitext(proc)
+            if extention == '.png':
+                pa = os.path.join(data_save_path, proc)
+                with open(pa, 'rb') as f:
+                    # proc = Proc(proc=File(f, name=f.name))
+                    # proc.save(f.name, proc,True)
+                    proc = Proc.objects.create(proc=File(f), result=result)
+                    # result.proc.add(proc)
+        result.save()
+        print(result)
         print(stat)
         saver.saveConfig(info)
     print()
-    return res
+    return res, result
 
 
 def buildStat(info, statistic):
@@ -748,45 +772,33 @@ def test_enhancement():
     enhance(src)
 
 
-if __name__ == '__main__':
-    #     # res1 = readPressureValueFromDir('lxd1_4', 'image/lxd1.jpg', 'config/lxd1_4.json')
-    #     # res2 = readPressureValueFromDir('szk2_1', 'image/szk2.jpg', 'config/szk2_1.json')
-    #     # res3 = readPressureValueFromDir('szk1_5', 'image/szk1.jpg', 'config/szk1_5.json')
-    #     # res4 = readPressureValueFromDir('wn1_5', 'image/wn1.jpg', 'config/wn1_5.json')
-    #     # res5 = readPressureValueFromDir('xyy3_1', 'image/xyy3.jpg', 'config/xyy3_1.json')
-    #     # res6 = readPressureValueFromDir('pressure2_1', 'image/pressure2.jpg', 'config/pressure2_1.json')
-    #     # init('pressure2_1', 'image/pressure2.jpg', 'config/pressure2_1.json')
-    #     # analysisConnectedComponentsProps('pressure2_1', 'image/pressure2.jpg', 'config/pressure2_1.json')
-    # img_main_dir = 'image/anpressure'
-    # template_main_dir = 'template/an'
-    # config_main_dir = 'labels/an'
+def entry(src_id, img_name, config_main_dir, img_dir, template_main_dir, data_main_dir):
+    # config_main_dir = 'config'
     # data_main_dir = 'data/output.xlsx'
-    img_main_dir = 'image'
-    # img_main_dir = 'image/4'
-    # img_main_dir = 'image/2'
-    # img_main_dir = 'image/3'
-    # img_main_dir = 'image/4'
-    template_main_dir = 'template'
-    config_main_dir = 'config'
-    data_main_dir = 'data/output.xlsx'
-    images = os.listdir(img_main_dir)
-    config = os.listdir(config_main_dir)
+    # images = os.listdir(img_main_dir)
+    config_dirs = os.listdir(config_main_dir)
+    template_dirs = os.listdir(template_main_dir)
     stats = []
-    for im in images:
-        im = im.lower()
-        img_dir = img_main_dir + os.path.sep + im
-        for i in range(1, 6):
-            meter_id = im.split(".jpg")[0] + "_" + str(i)
-            cdir = meter_id + '.json'
-            if cdir in config:
-                start = time.time()
-                config_dir = config_main_dir + os.path.sep + cdir
-                stat = {}
-                if -1 != load(meter_id, template_main_dir, img_dir, config_dir, stat):
-                    stats.append(stat)
-    saveToExcelFromDic(data_main_dir, stats)
+    # for im in images:
+    #     im = im.lower()
+    img_name = img_name.lower()
+    for i in range(1, 6):
+        meter_id = img_name.split(".jpg")[0] + "_" + str(i)
+        cdir = meter_id + '.json'
+        tdir = meter_id + '.jpg'
+        cUdir = meter_id + '.JSON'
+        tUdir = meter_id + '.JPG'
+        if (cdir in config_dirs and tdir in template_dirs) or (cUdir in config_dirs and tUdir in template_dirs):
+            config_dir = os.path.join(config_main_dir, cdir)
+            template_dir = os.path.join(template_main_dir, tdir)
+            template = cv2.imread(template_dir)
+            config = open(config_dir)
+            stat = {}
+            code, result = load(src_id, meter_id, template, img_dir, config, data_main_dir, stat)
+            return result
+    # saveToExcelFromDic(data_main_dir, stats)
 
-    # print("Time consumption: ", end - start)
+# print("Time consumption: ", end - start)
 #     # try:
 #     #     # analysisConnectedComponentsProps('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')
 #     #     # initExtractScaleLine('lxd1_2', 'image/lxd1.jpg', 'config/lxd1_2.json')

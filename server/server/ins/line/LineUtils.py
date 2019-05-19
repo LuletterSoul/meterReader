@@ -1,4 +1,3 @@
-from Common import EuclideanDistance
 import numpy as np
 
 
