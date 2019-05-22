@@ -17,7 +17,7 @@ class Config(models.Model):
 
 class ImageSrc(models.Model):
     src = models.ImageField(upload_to=IMAGE_REL_DIR, default=os.path.join(IMAGE_REL_DIR, 'default.jpg'))
-    result = models.ForeignKey('RegResult', on_delete=models.DO_NOTHING)
+    # result = models.ForeignKey('RegResult', on_delete=models.DO_NOTHING)
     # uuid = models.UUIDField(u'uuid', default=uuid.uuid4())
 
 

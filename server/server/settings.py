@@ -32,7 +32,7 @@ CONFIG_DIR = os.path.join(MEDIA_ROOT, 'config')
 PROC_DIR = os.path.join(MEDIA_ROOT, 'data')
 PROC_MAIN_DIR = 'data'
 
-APPEND_SLASH = False
+APPEND_SLASH = True
 # print(TEMPLATE_DIR)
 # print(CONFIG_DIR)
 # print(BASE_DIR)

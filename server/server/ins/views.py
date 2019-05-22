@@ -118,5 +118,11 @@ class ProcView(viewsets.ModelViewSet):
     # filter_class = ProcFilter
     queryset = Proc.objects.all()
     serializer_class = ProcSerializer
-    # def get(self, request, *args, **kwargs):
 
+    def list(self, request, *args, **kwargs):
+        res_id = request.GET.get("resultId")
+        if res_id:
+            return Response(
+                ProcSerializer(Proc.objects.filter(result=RegResult.objects.filter(id=res_id)), many=True).data)
+        else:
+            return Response(ProcSerializer(Proc.objects.all(), many=True).data)

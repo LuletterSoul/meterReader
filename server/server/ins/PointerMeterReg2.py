@@ -10,6 +10,7 @@ import random
 import time
 import imutils
 from django.core.files import File
+from django.core.files.uploadedfile import UploadedFile
 # from server.server.ins import LineSegmentFilter as LSF, LineUtils as LU
 
 from .line import LineSegmentFilter as LSF, LineUtils as LU
@@ -288,9 +289,12 @@ def load(src_id, meter_id, template, img_dir, config, data_dir, stat=None):
             if extention == '.png':
                 pa = os.path.join(data_save_path, proc)
                 with open(pa, 'rb') as f:
-                    # proc = Proc(proc=File(f, name=f.name))
+                    proc = Proc()
+                    proc.result = result
+                    proc.proc.save(f.name, File(f))
                     # proc.save(f.name, proc,True)
-                    proc = Proc.objects.create(proc=File(f), result=result)
+                    # Proc.objects.create(proc=UploadedFile(f), result=result)
+                    proc.save()
                     # result.proc.add(proc)
         result.save()
         print(result)

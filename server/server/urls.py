@@ -27,6 +27,8 @@ router.register(r'src', UploadImageSrcView)
 router.register(r'templates', UploadTemplateView)
 router.register(r'configs', UploadConfigView)
 router.register(r'proc', ProcView)
+# router.register(r'proc$', ProcView)
+# router.register(r'proc', ProcView)
 urlpatterns = [
     path('ins/', include(router.urls)),
     path('admin/', admin.site.urls),
