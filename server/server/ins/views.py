@@ -6,7 +6,7 @@ from django_filters import rest_framework
 from rest_framework.settings import api_settings
 from rest_framework import status
 from rest_framework.response import Response
-from ..settings import PROC_DIR, PROC_MAIN_DIR
+from ..settings.base import PROC_DIR, PROC_MAIN_DIR
 from .PointerMeterReg2 import entry
 from .filters import *
 

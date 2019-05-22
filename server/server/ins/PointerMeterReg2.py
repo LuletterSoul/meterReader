@@ -4,7 +4,7 @@ from .util import PlotUtil as plot
 from .util import RasancFitCircle as rasan
 # from server.server.ins.util import RasancFitCircle as rasan
 from .util.StoreUtil import DataSaver, saveToExcelFromDic
-from ..settings import PROC_REL_DIR
+from ..settings.base import PROC_REL_DIR
 # from server.server.ins.util.StoreUtil import DataSaver, saveToExcelFromDic
 import random
 import time

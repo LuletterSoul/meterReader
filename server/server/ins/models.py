@@ -1,6 +1,6 @@
 from django.db import models
-from ..settings import IMAGE_DIR, TEMPLATE_DIR, CONFIG_DIR, PROC_REL_DIR
-from ..settings import IMAGE_REL_DIR, TEMPLATE_REL_DIR, CONFIG_REL_DIR
+from ..settings.base import IMAGE_DIR, TEMPLATE_DIR, CONFIG_DIR, PROC_REL_DIR
+from ..settings.base import IMAGE_REL_DIR, TEMPLATE_REL_DIR, CONFIG_REL_DIR
 import os
 
 
