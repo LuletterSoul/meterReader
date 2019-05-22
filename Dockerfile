@@ -14,4 +14,4 @@ EXPOSE 8080
 COPY ./entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 ENTRYPOINT ["./entrypoint.sh"]
-#ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./uradind1m","-jar","/app.jar"]
+#ENTRYPOINT ["java",Djava.security.egd=file:/dev/./uradind1m","-jar","/app.jar"]
