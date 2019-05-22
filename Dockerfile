@@ -4,8 +4,8 @@ VOLUME /tmp
 #打包的工作目录
 WORKDIR /build/ins
 # 将源代码加入到容器中
-#ADD / /build/ins
-COPY requirements.txt ./
+ADD / /build/ins
+#COPY requirements.txt ./
 RUN pip install -r requirements.txt
 #映射端口
 EXPOSE 8080
