@@ -10,5 +10,6 @@ RUN pip install -r requirements.txt
 #映射端口
 EXPOSE 8080
 #加入容器启动命令
-CMD ["python","./server/manage.py","runserver","--setting=server.settings.prod","0.0.0.0:8080"]
+#CMD ["python","./server/manage.py","runserver","--setting=server.settings.prod","0.0.0.0:8080"]
+ENTRYPOINT ["./entrypoint.sh"]
 #ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./uradind1m","-jar","/app.jar"]
