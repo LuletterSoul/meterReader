@@ -6,25 +6,34 @@ import os
 
 # Create your models here.
 class Template(models.Model):
-    template = models.ImageField(upload_to=TEMPLATE_REL_DIR, default=os.path.join(TEMPLATE_REL_DIR, 'default.jpg'))
+    # template = models.ImageField(upload_to=TEMPLATE_REL_DIR, default=os.path.join(TEMPLATE_REL_DIR, 'default.jpg'))
+    template = models.CharField(u'路径', max_length=2000)
+    filename = models.CharField(u'文件名',max_length=2000)
     # uuid = models.UUIDField(u'uuid', default=uuid.uuid4())
 
 
 class Config(models.Model):
-    config = models.FileField(upload_to=CONFIG_REL_DIR, default=os.path.join(CONFIG_REL_DIR, 'default.json'))
+    # config = models.FileField(upload_to=CONFIG_REL_DIR, default=os.path.join(CONFIG_REL_DIR, 'default.json'))
+    config = models.CharField(u'路径', max_length=2000)
+    filename = models.CharField(u'文件名',max_length=2000)
     # uuid = models.UUIDField(u'uuid', default=uuid.uuid4())
 
 
 class ImageSrc(models.Model):
-    src = models.ImageField(upload_to=IMAGE_REL_DIR, default=os.path.join(IMAGE_REL_DIR, 'default.jpg'))
+    # src = models.ImageField(upload_to=IMAGE_REL_DIR, default=os.path.join(IMAGE_REL_DIR, 'default.jpg'))
+    src = models.CharField(u'路径', max_length=2000)
+    filename = models.CharField(u'文件名',max_length=2000)
     # result = models.ForeignKey('RegResult', on_delete=models.DO_NOTHING)
     # uuid = models.UUIDField(u'uuid', default=uuid.uuid4())
 
 
 class Proc(models.Model):
     # src = models.ForeignKey('RegResult', on_delete=models.DO_NOTHING)
-    proc = models.ImageField(upload_to=PROC_REL_DIR, default=os.path.join(PROC_REL_DIR, 'default.jpg'))
-    result = models.ForeignKey('RegResult',on_delete=models.DO_NOTHING)
+    # proc = models.ImageField(upload_to=PROC_REL_DIR, default=os.path.join(PROC_REL_DIR, 'default.jpg'))
+    proc = models.CharField(u'路径', max_length=2000)
+    filename = models.CharField(u'文件名',max_length=2000)
+    order = models.IntegerField(u'序号',default=0)
+    result = models.ForeignKey('RegResult', on_delete=models.DO_NOTHING)
 
 
 # Create your models here.

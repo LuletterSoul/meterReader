@@ -17,13 +17,14 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(os.path.join(__file__
 
 PARENT_DIR = os.path.dirname(BASE_DIR)
 
-IMAGE_REL_DIR = '././image'
-TEMPLATE_REL_DIR = '././template'
-CONFIG_REL_DIR = '././config'
-PROC_REL_DIR = 'data'
-
 MEDIA_URL = '/media/'
+MEDIA_DIR = 'media'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+IMAGE_REL_DIR = '{}/{}'.format(MEDIA_DIR, 'image')
+TEMPLATE_REL_DIR = '{}/{}'.format(MEDIA_DIR, 'template')
+CONFIG_REL_DIR = '{}/{}'.format(MEDIA_DIR, 'config')
+PROC_REL_DIR = '{}/{}'.format(MEDIA_DIR, 'data')
 
 IMAGE_DIR = os.path.join(MEDIA_ROOT, 'image')
 TEMPLATE_DIR = os.path.join(MEDIA_ROOT, 'template')
@@ -56,6 +57,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'corsheaders',
     # 'django_filters',
     'server.ins'
 ]
@@ -63,12 +65,15 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+CORS_ORIGIN_ALLOW_ALL = True
 
 ROOT_URLCONF = 'server.urls'
 

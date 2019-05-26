@@ -1,11 +1,15 @@
 from rest_framework import viewsets
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, FileUploadParser
+import json
+from django.core.files import File
+from ..settings.base import *
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from django_filters import rest_framework
 from rest_framework.settings import api_settings
 from rest_framework import status
 from rest_framework.response import Response
+from django.http.response import JsonResponse
 from ..settings.base import PROC_DIR, PROC_MAIN_DIR
 from .PointerMeterReg2 import entry
 from .filters import *
@@ -15,8 +19,9 @@ from dss.Serializer import serializer
 # from Algorithm import *
 from .serializers import *
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join('', 'media')
+
+# MEDIA_URL = '/media/'
+# MEDIA_ROOT = os.path.join('', 'media')
 
 
 # Create your views here.
@@ -32,13 +37,14 @@ class ResViewSet(viewsets.ModelViewSet):
         # print(serializer)
         data = request.data
         src_id = data['srcId']
-        img = ImageSrc.objects.get(id=data['srcId'])
-        if img is None:
-            print("Image is None.")
-        result = entry(src_id, os.path.basename(img.src.name), CONFIG_DIR, img.src.path, TEMPLATE_DIR, PROC_MAIN_DIR)
-        print(result)
-        jsonSerializer = ResSerializer(result)
-        return Response(jsonSerializer.data, status=status.HTTP_201_CREATED)
+        data = ImageSrc.objects.get(id=data['srcId'])
+        with open(data.src) as img:
+            if img is None:
+                print("Image is None.")
+            result = entry(src_id, os.path.basename(img.name), CONFIG_DIR, img.name, TEMPLATE_DIR, PROC_DIR)
+            print(result)
+            jsonSerializer = ResSerializer(result)
+            return Response(jsonSerializer.data, status=status.HTTP_201_CREATED)
 
     def perform_create(self, serializer):
         serializer.save()
@@ -70,35 +76,26 @@ class UploadImageSrcView(viewsets.ModelViewSet):
     #     else:
     #         return 'failed'
     #
-    # def create(self, request, *args, **kwargs):
-    #     # serializer = self.get_serializer(data=request.data)
-    #     # serializer.is_valid(raise_exception=True)
-    #     # self.perform_create(serializer)
-    #     # headers = self.get_success_headers(serializer.data)
-    #     print(request)
-    #     files = request.FILES.getlist('files')
-    #     if len(files) > 0:
-    #         if not os.path.exists(MEDIA_ROOT):
-    #             os.makedirs(MEDIA_ROOT)
-    #             for file in files:
-    #                 file_name, extention = os.path.splitext(file.name)
-    #                 file_path = '{}/{}'.format(MEDIA_ROOT, file_name)
-    #                 with open(file_path, 'wb') as f:
-    #                     for c in file.chuncks():
-    #                         f.write(c)
-    #         return 'success'
-    #     else:
-    #         return 'failed'
-    #     return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-    #
-    # def perform_create(self, serializer):
-    #     serializer.save()
-    #
-    # def get_success_headers(self, data):
-    #     try:
-    #         return {'Location': str(data[api_settings.URL_FIELD_NAME])}
-    #     except (TypeError, KeyError):
-    #         return {}
+    def create(self, request, *args, **kwargs):
+        file = request.data['file']
+        # if len(files) > 0:
+        if not os.path.exists(IMAGE_DIR):
+            os.makedirs(IMAGE_DIR)
+            # for file in files:
+        file_path = '{}/{}'.format(IMAGE_DIR, file.name)
+        media_path = '{}/{}'.format(IMAGE_REL_DIR, file.name)
+        print(file)
+        with open(file_path, 'wb') as f:
+            for c in file.chunks():
+                f.write(c)
+        srcImg = ImageSrc(src=media_path, filename=file.name)
+        srcImg.save()
+        # ImageSrc.objects.create(src=media_path)
+        # created.append(src)
+        # json_data = serializers.serialize('json', created)
+        # json_data = serializer(created, )
+        # return JsonResponse(json.dumps(created), status=status.HTTP_201_CREATED)
+        return Response(ImgSrcSerializer(srcImg).data, status=status.HTTP_201_CREATED)
 
 
 class UploadTemplateView(viewsets.ModelViewSet):
@@ -106,11 +103,53 @@ class UploadTemplateView(viewsets.ModelViewSet):
     queryset = Template.objects.all()
     serializer_class = TemplateSerializer
 
+    def create(self, request, *args, **kwargs):
+        file = request.data['file']
+        # if len(files) > 0:
+        if not os.path.exists(TEMPLATE_DIR):
+            os.makedirs(TEMPLATE_DIR)
+            # for file in files:
+        file_path = '{}/{}'.format(TEMPLATE_DIR, file.name)
+        media_path = '{}/{}'.format(TEMPLATE_REL_DIR, file.name)
+        print(file)
+        with open(file_path, 'wb') as f:
+            for c in file.chunks():
+                f.write(c)
+        t = Template(template=media_path, filename=file.name)
+        t.save()
+        # ImageSrc.objects.create(src=media_path)
+        # created.append(src)
+        # json_data = serializers.serialize('json', created)
+        # json_data = serializer(created, )
+        # return JsonResponse(json.dumps(created), status=status.HTTP_201_CREATED)
+        return Response(TemplateSerializer(t).data, status=status.HTTP_201_CREATED)
+
 
 class UploadConfigView(viewsets.ModelViewSet):
     parser_classes = (MultiPartParser, FormParser)
     queryset = Config.objects.all()
     serializer_class = ConfigSerializer
+
+    def create(self, request, *args, **kwargs):
+        file = request.data['file']
+        # if len(files) > 0:
+        if not os.path.exists(CONFIG_DIR):
+            os.makedirs(CONFIG_DIR)
+            # for file in files:
+        file_path = '{}/{}'.format(CONFIG_DIR, file.name)
+        media_path = '{}/{}'.format(CONFIG_REL_DIR, file.name)
+        print(file)
+        with open(file_path, 'wb') as f:
+            for c in file.chunks():
+                f.write(c)
+        c = Config(config=media_path, filename=file.name)
+        c.save()
+        # ImageSrc.objects.create(src=media_path)
+        # created.append(src)
+        # json_data = serializers.serialize('json', created)
+        # json_data = serializer(created, )
+        # return JsonResponse(json.dumps(created), status=status.HTTP_201_CREATED)
+        return Response(ConfigSerializer(c).data, status=status.HTTP_201_CREATED)
 
 
 class ProcView(viewsets.ModelViewSet):
@@ -123,6 +162,8 @@ class ProcView(viewsets.ModelViewSet):
         res_id = request.GET.get("resultId")
         if res_id:
             return Response(
-                ProcSerializer(Proc.objects.filter(result=RegResult.objects.filter(id=res_id)), many=True).data)
+                ProcSerializer(
+                    Proc.objects.filter(result=RegResult.objects.filter(id=int(res_id))[0]).order_by('order'),
+                    many=True).data)
         else:
             return Response(ProcSerializer(Proc.objects.all(), many=True).data)

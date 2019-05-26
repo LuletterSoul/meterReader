@@ -4,13 +4,11 @@ from .util import PlotUtil as plot
 from .util import RasancFitCircle as rasan
 # from server.server.ins.util import RasancFitCircle as rasan
 from .util.StoreUtil import DataSaver, saveToExcelFromDic
-from ..settings.base import PROC_REL_DIR
 # from server.server.ins.util.StoreUtil import DataSaver, saveToExcelFromDic
 import random
 import time
 import imutils
-from django.core.files import File
-from django.core.files.uploadedfile import UploadedFile
+from ..settings.base import *
 # from server.server.ins import LineSegmentFilter as LSF, LineUtils as LU
 
 from .line import LineSegmentFilter as LSF, LineUtils as LU
@@ -286,12 +284,14 @@ def load(src_id, meter_id, template, img_dir, config, data_dir, stat=None):
         result.save()
         for proc in proc_dirs:
             filename, extention = os.path.splitext(proc)
+            order = proc.split('_')[0]
             if extention == '.png':
                 pa = os.path.join(data_save_path, proc)
+                media_pa = '{}/{}/{}'.format(PROC_REL_DIR, saver.time_dir, proc)
                 with open(pa, 'rb') as f:
-                    proc = Proc()
-                    proc.result = result
-                    proc.proc.save(f.name, File(f))
+                    proc = Proc(proc=media_pa, order=order, result=result)
+                    # proc.result = result
+                    # proc.proc.save(f.name, File(f))
                     # proc.save(f.name, proc,True)
                     # Proc.objects.create(proc=UploadedFile(f), result=result)
                     proc.save()

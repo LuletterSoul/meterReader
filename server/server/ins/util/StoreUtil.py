@@ -18,7 +18,8 @@ class DataSaver:
         if not os.path.exists(meter_dir):
             os.mkdir(meter_dir)
         str_time = time.strftime('%m-%d-%H:%M:%S', time.localtime(time.time()))
-        current_data_dir = meter_dir + os.path.sep + str(len(os.listdir(meter_dir)) + 1) + '_' + str_time
+        self.time_dir = meter_id + os.path.sep + str(len(os.listdir(meter_dir)) + 1) + '_' + str_time
+        current_data_dir = os.path.join(data_dir, self.time_dir)
         os.mkdir(current_data_dir)
         self.save_path = current_data_dir
 
