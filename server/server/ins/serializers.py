@@ -5,7 +5,9 @@ from .models import *
 class ResSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = RegResult
-        fields = ('id', 'value', 'srcId', 'realValue', 'absoluteError', 'relativeError', 'timeConsumption')
+        fields = (
+            'id', 'value', 'srcId', 'realValue', 'absoluteError', 'relativeError', 'timeConsumption', 'src', 'template',
+            'config')
         # proc = serializers.HyperlinkedIdentityField(view_name='proc-detail', lookup_field='id')
 
 
@@ -30,4 +32,4 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
 class ProcSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Proc
-        fields = ('id', 'proc')
+        fields = ('id', 'proc', 'order')

@@ -278,8 +278,8 @@ def load(src_id, meter_id, template, img_dir, config, data_dir, stat=None):
         buildStat(info, stat)
         data_save_path = saver.save_path
         proc_dirs = os.listdir(data_save_path)
-        # template =
         result = RegResult(value=res, realValue=real_value, absoluteError=abs_error, timeConsumption=consumption,
+                           relativeError=relative_error,
                            srcId=src_id)
         result.save()
         for proc in proc_dirs:
@@ -290,12 +290,7 @@ def load(src_id, meter_id, template, img_dir, config, data_dir, stat=None):
                 media_pa = '{}/{}/{}'.format(PROC_REL_DIR, saver.time_dir, proc)
                 with open(pa, 'rb') as f:
                     proc = Proc(proc=media_pa, order=order, result=result)
-                    # proc.result = result
-                    # proc.proc.save(f.name, File(f))
-                    # proc.save(f.name, proc,True)
-                    # Proc.objects.create(proc=UploadedFile(f), result=result)
                     proc.save()
-                    # result.proc.add(proc)
         result.save()
         print(result)
         print(stat)
@@ -796,10 +791,17 @@ def entry(src_id, img_name, config_main_dir, img_dir, template_main_dir, data_ma
             config_dir = os.path.join(config_main_dir, cdir)
             template_dir = os.path.join(template_main_dir, tdir)
             template = cv2.imread(template_dir)
+            # t_query= Template.objects.filter(template=template_dir)
             config = open(config_dir)
             stat = {}
             code, result = load(src_id, meter_id, template, img_dir, config, data_main_dir, stat)
+            result.src = os.path.join(IMAGE_REL_DIR, img_name)
+            result.template = os.path.join(TEMPLATE_REL_DIR, tdir)
+            result.config = os.path.join(CONFIG_REL_DIR, cdir)
+            result.save()
             return result
+        else:
+            return None
     # saveToExcelFromDic(data_main_dir, stats)
 
 # print("Time consumption: ", end - start)

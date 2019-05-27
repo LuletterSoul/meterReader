@@ -1,5 +1,6 @@
 from rest_framework import viewsets
 from rest_framework.parsers import MultiPartParser, FormParser, FileUploadParser
+import hashlib
 import json
 from django.core.files import File
 from ..settings.base import *
@@ -37,14 +38,27 @@ class ResViewSet(viewsets.ModelViewSet):
         # print(serializer)
         data = request.data
         src_id = data['srcId']
-        data = ImageSrc.objects.get(id=data['srcId'])
-        with open(data.src) as img:
-            if img is None:
-                print("Image is None.")
-            result = entry(src_id, os.path.basename(img.name), CONFIG_DIR, img.name, TEMPLATE_DIR, PROC_DIR)
-            print(result)
-            jsonSerializer = ResSerializer(result)
-            return Response(jsonSerializer.data, status=status.HTTP_201_CREATED)
+        src_ids = data['srcIds']
+        results = []
+        if src_ids is not None:
+            datas = ImageSrc.objects.filter(id__in=src_ids)
+            for index, d in enumerate(datas):
+                with open(d.src) as img:
+                    if img is None:
+                        print("Image is None.")
+                    result = entry(src_ids[index], os.path.basename(img.name), CONFIG_DIR, img.name, TEMPLATE_DIR,
+                                   PROC_DIR)
+                    if result is not None:
+                        results.append(result)
+            jsonSerializer = ResSerializer(results, many=True)
+        elif src_id is not None:
+            data = ImageSrc.objects.get(id=data['srcId'])
+            with open(data.src) as img:
+                if img is None:
+                    print("Image is None.")
+                result = entry(src_id, os.path.basename(img.name), CONFIG_DIR, img.name, TEMPLATE_DIR, PROC_DIR)
+                jsonSerializer = ResSerializer(result, many=False)
+        return Response(jsonSerializer.data, status=status.HTTP_201_CREATED)
 
     def perform_create(self, serializer):
         serializer.save()
@@ -84,17 +98,19 @@ class UploadImageSrcView(viewsets.ModelViewSet):
             # for file in files:
         file_path = '{}/{}'.format(IMAGE_DIR, file.name)
         media_path = '{}/{}'.format(IMAGE_REL_DIR, file.name)
-        print(file)
-        with open(file_path, 'wb') as f:
-            for c in file.chunks():
-                f.write(c)
-        srcImg = ImageSrc(src=media_path, filename=file.name)
-        srcImg.save()
-        # ImageSrc.objects.create(src=media_path)
-        # created.append(src)
-        # json_data = serializers.serialize('json', created)
-        # json_data = serializer(created, )
-        # return JsonResponse(json.dumps(created), status=status.HTTP_201_CREATED)
+        srcImg = ImageSrc()
+        # 重复返回第一个文件
+        if os.path.exists(media_path):
+            filter = ImageSrc.objects.filter(src=media_path)
+            if len(filter):
+                srcImg = filter[0]
+        # 不重复，写入文件，保存到数据库
+        else:
+            with open(file_path, 'wb') as f:
+                for c in file.chunks():
+                    f.write(c)
+            srcImg = ImageSrc(src=media_path, filename=file.name)
+            srcImg.save()
         return Response(ImgSrcSerializer(srcImg).data, status=status.HTTP_201_CREATED)
 
 
@@ -112,6 +128,7 @@ class UploadTemplateView(viewsets.ModelViewSet):
         file_path = '{}/{}'.format(TEMPLATE_DIR, file.name)
         media_path = '{}/{}'.format(TEMPLATE_REL_DIR, file.name)
         print(file)
+        t = Template
         with open(file_path, 'wb') as f:
             for c in file.chunks():
                 f.write(c)
