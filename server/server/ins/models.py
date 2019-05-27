@@ -17,7 +17,7 @@ class Config(models.Model):
     # config = models.FileField(upload_to=CONFIG_REL_DIR, default=os.path.join(CONFIG_REL_DIR, 'default.json'))
     config = models.CharField(u'路径', max_length=2000)
     filename = models.CharField(u'文件名', max_length=2000)
-    md5 = models.CharField(u'md5', max_length=2000)
+    # md5 = models.CharField(u'md5', max_length=2000)
     # uuid = models.UUIDField(u'uuid', default=uuid.uuid4())
 
 
