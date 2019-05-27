@@ -14,6 +14,7 @@ from django.http.response import JsonResponse
 from ..settings.base import PROC_DIR, PROC_MAIN_DIR
 from .PointerMeterReg2 import entry
 from .filters import *
+import threading
 
 from django.core import serializers
 from dss.Serializer import serializer
@@ -23,6 +24,21 @@ from .serializers import *
 
 # MEDIA_URL = '/media/'
 # MEDIA_ROOT = os.path.join('', 'media')
+class MyThread(threading.Thread):
+
+    def __init__(self, func, args=()):
+        super(MyThread, self).__init__()
+        self.func = func
+        self.args = args
+
+    def run(self):
+        self.result = self.func(*self.args)
+
+    def get_result(self):
+        try:
+            return self.result  # 如果子线程不使用join方法，此处可能会报没有self.result的错误
+        except Exception:
+            return None
 
 
 # Create your views here.
@@ -40,16 +56,25 @@ class ResViewSet(viewsets.ModelViewSet):
         src_id = data['srcId']
         src_ids = data['srcIds']
         results = []
+        tasks = []
         if src_ids is not None:
             datas = ImageSrc.objects.filter(id__in=src_ids)
             for index, d in enumerate(datas):
                 with open(d.src) as img:
                     if img is None:
                         print("Image is None.")
-                    result = entry(src_ids[index], os.path.basename(img.name), CONFIG_DIR, img.name, TEMPLATE_DIR,
-                                   PROC_DIR)
-                    if result is not None:
-                        results.append(result)
+                    t = MyThread(entry, args=(
+                        src_ids[index], os.path.basename(img.name), CONFIG_DIR, img.name, TEMPLATE_DIR,
+                        PROC_DIR))
+                    t.start()
+                    tasks.append(t)
+                    result = entry
+            for t in tasks:
+                t.join()
+                result = t.get_result()
+                if result is not None:
+                    results.append(result)
+                    results.append(result)
             jsonSerializer = ResSerializer(results, many=True)
         elif src_id is not None:
             data = ImageSrc.objects.get(id=data['srcId'])
@@ -96,8 +121,9 @@ class UploadImageSrcView(viewsets.ModelViewSet):
         if not os.path.exists(IMAGE_DIR):
             os.makedirs(IMAGE_DIR)
             # for file in files:
-        file_path = '{}/{}'.format(IMAGE_DIR, file.name)
-        media_path = '{}/{}'.format(IMAGE_REL_DIR, file.name)
+        filename = file.name.lower()
+        file_path = '{}/{}'.format(IMAGE_DIR, filename)
+        media_path = '{}/{}'.format(IMAGE_REL_DIR, filename)
         srcImg = ImageSrc()
         # 重复返回第一个文件
         if os.path.exists(media_path):
@@ -109,7 +135,7 @@ class UploadImageSrcView(viewsets.ModelViewSet):
             with open(file_path, 'wb') as f:
                 for c in file.chunks():
                     f.write(c)
-            srcImg = ImageSrc(src=media_path, filename=file.name)
+            srcImg = ImageSrc(src=media_path, filename=filename)
             srcImg.save()
         return Response(ImgSrcSerializer(srcImg).data, status=status.HTTP_201_CREATED)
 
@@ -125,14 +151,13 @@ class UploadTemplateView(viewsets.ModelViewSet):
         if not os.path.exists(TEMPLATE_DIR):
             os.makedirs(TEMPLATE_DIR)
             # for file in files:
-        file_path = '{}/{}'.format(TEMPLATE_DIR, file.name)
-        media_path = '{}/{}'.format(TEMPLATE_REL_DIR, file.name)
-        print(file)
-        t = Template
+        filename = file.name.lower()
+        file_path = '{}/{}'.format(TEMPLATE_DIR, filename)
+        media_path = '{}/{}'.format(TEMPLATE_REL_DIR, filename)
         with open(file_path, 'wb') as f:
             for c in file.chunks():
                 f.write(c)
-        t = Template(template=media_path, filename=file.name)
+        t = Template(template=media_path, filename=filename)
         t.save()
         # ImageSrc.objects.create(src=media_path)
         # created.append(src)
@@ -153,13 +178,13 @@ class UploadConfigView(viewsets.ModelViewSet):
         if not os.path.exists(CONFIG_DIR):
             os.makedirs(CONFIG_DIR)
             # for file in files:
-        file_path = '{}/{}'.format(CONFIG_DIR, file.name)
-        media_path = '{}/{}'.format(CONFIG_REL_DIR, file.name)
-        print(file)
+        filename = file.name.lower()
+        file_path = '{}/{}'.format(CONFIG_DIR, filename)
+        media_path = '{}/{}'.format(CONFIG_REL_DIR, filename)
         with open(file_path, 'wb') as f:
             for c in file.chunks():
                 f.write(c)
-        c = Config(config=media_path, filename=file.name)
+        c = Config(config=media_path, filename=filename)
         c.save()
         # ImageSrc.objects.create(src=media_path)
         # created.append(src)

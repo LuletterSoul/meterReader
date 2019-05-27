@@ -8,6 +8,7 @@ from .util.StoreUtil import DataSaver, saveToExcelFromDic
 import random
 import time
 import imutils
+import threading
 from ..settings.base import *
 # from server.server.ins import LineSegmentFilter as LSF, LineUtils as LU
 
@@ -780,14 +781,13 @@ def entry(src_id, img_name, config_main_dir, img_dir, template_main_dir, data_ma
     stats = []
     # for im in images:
     #     im = im.lower()
-    img_name = img_name.lower()
     for i in range(1, 6):
         meter_id = img_name.split(".jpg")[0] + "_" + str(i)
         cdir = meter_id + '.json'
         tdir = meter_id + '.jpg'
-        cUdir = meter_id + '.JSON'
-        tUdir = meter_id + '.JPG'
-        if (cdir in config_dirs and tdir in template_dirs) or (cUdir in config_dirs and tUdir in template_dirs):
+        # cUdir = meter_id + '.JSON'
+        # tUdir = meter_id + '.JPG'
+        if cdir in config_dirs and tdir in template_dirs:
             config_dir = os.path.join(config_main_dir, cdir)
             template_dir = os.path.join(template_main_dir, tdir)
             template = cv2.imread(template_dir)
