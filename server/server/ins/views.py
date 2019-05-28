@@ -4,6 +4,7 @@ import hashlib
 import json
 from django.core.files import File
 from ..settings.base import *
+from .util.Label import formatConfig
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from django_filters import rest_framework
@@ -55,6 +56,12 @@ class ResViewSet(viewsets.ModelViewSet):
         data = request.data
         src_id = data['srcId']
         src_ids = data['srcIds']
+        ptRegAlgType = data['ptRegAlgType']
+        enableFitting = data['enableFitting']
+        if ptRegAlgType is None:
+            ptRegAlgType = 0
+        if enableFitting is None:
+            enableFitting = False
         results = []
         tasks = []
         if src_ids is not None:
@@ -67,7 +74,7 @@ class ResViewSet(viewsets.ModelViewSet):
                             print("Image is None.")
                         t = MyThread(entry, args=(
                             src_ids[index], os.path.basename(img.name), CONFIG_DIR, img.name, TEMPLATE_DIR,
-                            PROC_DIR))
+                            PROC_DIR, ptRegAlgType, enableFitting))
                     t.start()
                     tasks.append(t)
                 else:
@@ -78,7 +85,7 @@ class ResViewSet(viewsets.ModelViewSet):
                 if result is not None:
                     results.append(result)
                     results.append(result)
-            jsonSerializer = ResSerializer(results, many=True)
+            json_serializer = ResSerializer(results, many=True)
         elif src_id is not None:
             data = ImageSrc.objects.get(id=data['srcId'])
             path = os.path.join(BASE_DIR, data.src)
@@ -86,18 +93,21 @@ class ResViewSet(viewsets.ModelViewSet):
                 with open(data.src) as img:
                     if img is None:
                         print("Image is None.")
-                    result = entry(src_id, os.path.basename(img.name), CONFIG_DIR, img.name, TEMPLATE_DIR, PROC_DIR)
-                    jsonSerializer = ResSerializer(result, many=False)
-        return Response(jsonSerializer.data, status=status.HTTP_201_CREATED)
+                result = entry(src_id, os.path.basename(img.name), CONFIG_DIR, img.name, TEMPLATE_DIR, PROC_DIR,
+                               ptRegAlgType, enableFitting)
+                json_serializer = ResSerializer(result, many=False)
+        return Response(json_serializer.data, status=status.HTTP_201_CREATED)
 
-    def perform_create(self, serializer):
-        serializer.save()
 
-    def get_success_headers(self, data):
-        try:
-            return {'Location': str(data[api_settings.URL_FIELD_NAME])}
-        except (TypeError, KeyError):
-            return {}
+def perform_create(self, serializer):
+    serializer.save()
+
+
+def get_success_headers(self, data):
+    try:
+        return {'Location': str(data[api_settings.URL_FIELD_NAME])}
+    except (TypeError, KeyError):
+        return {}
 
 
 class UploadImageSrcView(viewsets.ModelViewSet):

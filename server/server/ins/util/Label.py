@@ -1,4 +1,4 @@
-from util.ROIUtil import *
+from .ROIUtil import *
 import cv2
 import os
 import json
@@ -73,6 +73,24 @@ def modifyConfig():
             # josnc['enableLineThinning'] = False
             # josnc['ptRegAlgType'] = 1
             josnc['enableFitting'] = False
+            # josnc['enableFitting'] = True
+            config.write(json.dumps(josnc, indent=4))
+
+
+def formatConfig(config_dir, ptRegAlgType=0, enableFitting=False):
+    #  config_dir = os.path.join('labels', 'an')
+    filename, extention = os.path.splitext(os.path.basename(config_dir))
+    if extention == '.json':
+        config = open(config_dir)
+        josnc = json.load(config)
+        if josnc['type'] == 'normalPressure':
+            config.close()
+            config = open(config_dir, 'w')
+            josnc['ptRegAlgType'] = ptRegAlgType
+            josnc['matchTemplateType'] = 2
+            # josnc['enableLineThinning'] = False
+            # josnc['ptRegAlgType'] = 1
+            josnc['enableFitting'] = enableFitting
             # josnc['enableFitting'] = True
             config.write(json.dumps(josnc, indent=4))
 

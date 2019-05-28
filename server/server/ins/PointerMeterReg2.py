@@ -2,6 +2,7 @@ from .Common import *
 import json
 from .util import PlotUtil as plot
 from .util import RasancFitCircle as rasan
+from .util.Label import formatConfig
 # from server.server.ins.util import RasancFitCircle as rasan
 from .util.StoreUtil import DataSaver, saveToExcelFromDic
 # from server.server.ins.util.StoreUtil import DataSaver, saveToExcelFromDic
@@ -772,7 +773,7 @@ def test_enhancement():
     enhance(src)
 
 
-def entry(src_id, img_name, config_main_dir, img_dir, template_main_dir, data_main_dir):
+def entry(src_id, img_name, config_main_dir, img_dir, template_main_dir, data_main_dir, ptRegAlgType, enableFitting):
     # config_main_dir = 'config'
     # data_main_dir = 'data/output.xlsx'
     # images = os.listdir(img_main_dir)
@@ -793,6 +794,7 @@ def entry(src_id, img_name, config_main_dir, img_dir, template_main_dir, data_ma
             config_dir = os.path.join(config_main_dir, cdir)
             template_dir = os.path.join(template_main_dir, tdir)
             template = cv2.imread(template_dir)
+            formatConfig(config_dir, ptRegAlgType, enableFitting)
             # t_query= Template.objects.filter(template=template_dir)
             config = open(config_dir)
             stat = {}
@@ -803,7 +805,8 @@ def entry(src_id, img_name, config_main_dir, img_dir, template_main_dir, data_ma
             result.save()
             return result
         else:
-            print('{} or {} not in {},{}'.format(cdir, tdir, config_dirs, template_dirs))
+            # print('{} or {} not in {},{}'.format(cdir, tdir, config_dirs, template_dirs))
+            print('Config or template not in current library.')
             return None
     # saveToExcelFromDic(data_main_dir, stats)
 
