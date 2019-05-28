@@ -778,7 +778,9 @@ def entry(src_id, img_name, config_main_dir, img_dir, template_main_dir, data_ma
     # images = os.listdir(img_main_dir)
     config_dirs = os.listdir(config_main_dir)
     template_dirs = os.listdir(template_main_dir)
-    stats = []
+    print('Config dirs:', config_dirs)
+    print('Template dirs:', template_dirs)
+    # stats = []
     # for im in images:
     #     im = im.lower()
     for i in range(1, 6):
@@ -801,6 +803,7 @@ def entry(src_id, img_name, config_main_dir, img_dir, template_main_dir, data_ma
             result.save()
             return result
         else:
+            print('{} or {} not in {},{}'.format(cdir, tdir, config_dirs, template_dirs))
             return None
     # saveToExcelFromDic(data_main_dir, stats)
 

@@ -60,15 +60,18 @@ class ResViewSet(viewsets.ModelViewSet):
         if src_ids is not None:
             datas = ImageSrc.objects.filter(id__in=src_ids)
             for index, d in enumerate(datas):
-                with open(d.src) as img:
-                    if img is None:
-                        print("Image is None.")
-                    t = MyThread(entry, args=(
-                        src_ids[index], os.path.basename(img.name), CONFIG_DIR, img.name, TEMPLATE_DIR,
-                        PROC_DIR))
+                path = os.path.join(BASE_DIR, d.src)
+                if os.path.exists(path):
+                    with open(d.src) as img:
+                        if img is None:
+                            print("Image is None.")
+                        t = MyThread(entry, args=(
+                            src_ids[index], os.path.basename(img.name), CONFIG_DIR, img.name, TEMPLATE_DIR,
+                            PROC_DIR))
                     t.start()
                     tasks.append(t)
-                    result = entry
+                else:
+                    print('Image not existed.')
             for t in tasks:
                 t.join()
                 result = t.get_result()
@@ -78,11 +81,13 @@ class ResViewSet(viewsets.ModelViewSet):
             jsonSerializer = ResSerializer(results, many=True)
         elif src_id is not None:
             data = ImageSrc.objects.get(id=data['srcId'])
-            with open(data.src) as img:
-                if img is None:
-                    print("Image is None.")
-                result = entry(src_id, os.path.basename(img.name), CONFIG_DIR, img.name, TEMPLATE_DIR, PROC_DIR)
-                jsonSerializer = ResSerializer(result, many=False)
+            path = os.path.join(BASE_DIR, data.src)
+            if os.path.exists(path):
+                with open(data.src) as img:
+                    if img is None:
+                        print("Image is None.")
+                    result = entry(src_id, os.path.basename(img.name), CONFIG_DIR, img.name, TEMPLATE_DIR, PROC_DIR)
+                    jsonSerializer = ResSerializer(result, many=False)
         return Response(jsonSerializer.data, status=status.HTTP_201_CREATED)
 
     def perform_create(self, serializer):
